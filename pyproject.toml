@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pypads-onto"
-version = "0.1.3"
+version = "0.1.4"
 description = "PyPads_Onto is an extension introducing ontology information. It will be used for semantic harmonization."
 authors = ["Thomas Weißgerber <thomas.weissgerber@uni-passau.de>", "Ben Amor Mehdi <Mehdi.BenAmor@uni-passau.de>", "Christofer Fellicious <Christofer.Fellicious@uni-passau.de>"]
 license = "GPL-3.0-or-later"
