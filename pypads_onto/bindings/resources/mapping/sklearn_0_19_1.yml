@@ -31,7 +31,6 @@ mappings:
     :calibration.CalibratedClassifierCV:
       ;default_model: ~
       data:
-        concepts: ["https://wikibase.padre-lab.eu/wiki/Item:Q258974"]
         hyper_parameters:
           execution_parameters: []
           model_parameters:
@@ -65,6 +64,7 @@ mappings:
     :cluster.affinity_propagation_.AffinityPropagation:
       ;default_model: ~
       data:
+        concepts: ["https://wikibase.padre-lab.eu/wiki/Item:Q258974"]
         hyper_parameters:
           execution_parameters: []
           model_parameters:
