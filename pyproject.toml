@@ -1,0 +1,58 @@
+[tool.poetry]
+name = "pypads-onto"
+version = "0.1.0"
+description = "PyPads_Onto is an extension introducing ontology information. It will be used for semantic harmonization."
+authors = ["Thomas Weißgerber <thomas.weissgerber@uni-passau.de>", "Ben Amor Mehdi <Mehdi.BenAmor@uni-passau.de>", "Christofer Fellicious <Christofer.Fellicious@uni-passau.de>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+homepage = "https://www.padre-lab.eu/"
+repository = "https://github.com/padre-lab-eu/pypads-onto"
+documentation = "https://pypads.readthedocs.io/en/latest/"
+keywords = ["tracking", "machine learning", "deep learning", "neural networks", "reproducibility", "ontologies", "semantic web", "linked open data"]
+classifiers = ["Development Status :: 3 - Alpha", "Intended Audience :: Developers", "Intended Audience :: Science/Research", "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)", "Natural Language :: English", "Operating System :: MacOS", "Operating System :: Microsoft :: Windows", "Operating System :: Unix", "Programming Language :: Python :: 3.7", "Programming Language :: Python :: 3.8", "Programming Language :: Python :: 3.9", "Topic :: Scientific/Engineering :: Artificial Intelligence"]
+
+[tool.poetry.dependencies]
+python = "^3.7.0"
+pypads = "^0.2.0"
+pypads-padre = "^0.2.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2.5"
+pytest-faulthandler = "^2.0.1"
+scikit-learn = "^0.21.3"
+keras = "^2.3.1"
+tensorflow = "^2.0.0b1"
+psutil = "^5.7.0"
+networkx = "^2.4"
+torch = "^1.5.0"
+sphinx = "^2.0.1"
+sphinx_rtd_theme = "^0.4.3"
+taskipy = "^1.1.2"
+bump2version = "^1.0.0"
+coverage = {version = "^5.0", extras = ["toml"]}
+gitchangelog = "^3.0.4"
+
+[tool.poetry.extras]
+docs = ["sphinx", "sphinx_rtd_theme"]
+
+[tool.taskipy.tasks]
+#pre_publish = "poetry test"
+publish = "bump2version"
+post_publish = "gitchangelog && git add ./CHANGELOG.rst && git commit -m 'auto: Updated changelog' && git push && task doc"
+doc = "make -C ./docs html"
+post_doc = "task deploy"
+deploy = "poetry build && poetry publish"
+
+[tool.coverage.run]
+branch = true
+include = ["pypads_onto/*"]
+omit = [
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = []
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
