@@ -1,4 +1,4 @@
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 from pypads_onto.app.plugin import configure_plugin
 
