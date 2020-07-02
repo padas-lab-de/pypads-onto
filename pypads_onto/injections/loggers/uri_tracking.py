@@ -1,12 +1,26 @@
 import sys
 import os
+from python_wikibase import PyWikibase
 from pypads.app.injections.base_logger import LoggingFunction
 from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact
 from pypads.importext.mappings import LibSelector
+from pypads_onto.utils.wikibase_util import WIKIBASE_API_ENDPOINT
+
+
+def initialize_wikibase(user, password):
+    config = {
+        "api_url": WIKIBASE_API_ENDPOINT,
+        "login_credentials": {'bot_username': user, 'bot_password': password},
+        "is_bot": True,
+        "summary": "Modified using wikibase-api for Python"
+    }
+    py_wb = PyWikibase(**config)
 
 
 class URILogger(LoggingFunction):
+
+
     @staticmethod
     def _needed_packages():
         pass
