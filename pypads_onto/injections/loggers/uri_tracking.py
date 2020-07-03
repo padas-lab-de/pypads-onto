@@ -5,25 +5,91 @@ from pypads.app.injections.base_logger import LoggingFunction
 from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact
 from pypads.importext.mappings import LibSelector
-from pypads_onto.utils.wikibase_util import WIKIBASE_API_ENDPOINT
+from pypads_onto.utils.wikibase_util import WIKIBASE_API_ENDPOINT, create_entity, query_wikibase_sparql
 
 
-def initialize_wikibase(user, password):
-    config = {
-        "api_url": WIKIBASE_API_ENDPOINT,
-        "login_credentials": {'bot_username': user, 'bot_password': password},
-        "is_bot": True,
-        "summary": "Modified using wikibase-api for Python"
-    }
-    py_wb = PyWikibase(**config)
+def create_run_entity(wikibase_object, name, description, experiment_name):
+    """
+    Creates a run object in the wikibase and links the basic properties to the run
+    :param wikibase_object: the logged in wikibase object'
+    :param name: name of the run
+    :param description: description of the run
+    :param experiment_name: Name of the experiment the run belongs to
+    :return:
+    """
+    from pypads_onto.utils.wikibase_util import PART_OF_PROP, INSTANCE_OF, EXPERIMENT_ENTITY, EXPERIMENTAL_RUN_ENTITY
+
+    # Create the run entity
+    run_entity = create_entity(wikibase_object, name, description)
+
+    property_instanceof = wikibase_object.Property().get(INSTANCE_OF)
+
+    # Get the experiment using the experiment name
+    experiment_entity = query_wikibase_sparql(entity_name=experiment_name)
+    if len(experiment_entity) == 0:
+
+        # Fetch instance of property and experiment entity from Wikibase
+        base_experiment_entity = wikibase_object.Item().get(EXPERIMENT_ENTITY)
+
+        # Create the new experiment and link it to the experiment entity as
+        # the current experiment is an instance of experiment
+        experiment_entity = create_entity(wikibase_object, experiment_name, "Experiment created by PyPads")
+        experiment_entity.claims.add(property_instanceof, base_experiment_entity)
+
+    elif len(experiment_entity) == 1:
+        # link the run entity to the experiment entity
+        experiment_entity = experiment_entity[0]
+    else:
+        # Multiple entities with the same name exists
+        raise ValueError
+
+    # Link the experiment and the run
+    property_partof = wikibase_object.Property().get(PART_OF_PROP)
+    run_entity.claims.add(property_partof, experiment_entity)
+
+    # run_entity is an instance of Run entity
+    experimental_run_entity = query_wikibase_sparql(entity_name=EXPERIMENTAL_RUN_ENTITY)
+    run_entity.claims.add(property_instanceof, EXPERIMENTAL_RUN_ENTITY)
+
+    return run_entity
+
+
+def link_sklearn_estimators(wikibase_object, run_entity, sklearn_estimator):
+    """
+    Links estimator to the run along with all the hyperparameters as references
+    :param wikibase_object: Python wikibase object
+    :param run_entity:
+    :param sklearn_estimator:
+    :return:
+    """
+    # Get all hyperparameters of the estimator
+    # Get all values of the hyperparameters for the run
+    pass
 
 
 class URILogger(LoggingFunction):
 
+    _wikibase_object = None
+
+    def __init__(self, username, password):
+        self._wikibase_object = self.initialize_wikibase(username, password)
+
+    def wikibase_object(self):
+        return self._wikibase_object
 
     @staticmethod
     def _needed_packages():
         pass
+
+    def initialize_wikibase(self, username, password):
+        config = {
+            "api_url": WIKIBASE_API_ENDPOINT,
+            "login_credentials": {'bot_username': username, 'bot_password': password},
+            "is_bot": True,
+            "summary": "Modified using wikibase-api for Python"
+        }
+        py_wb = PyWikibase(**config)
+        return py_wb
 
     def __pre__(self, ctx, *args, _pypads_write_format=WriteFormats.pickle, _pypads_env, _args, _kwargs, **kwargs):
         for i in range(len(args)):

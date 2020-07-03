@@ -11,6 +11,10 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
 # TODO: Create property uses_dataset
 USES_DATASET_PROP = 'P1234'
+PART_OF_PROP = 'P6465'
+INSTANCE_OF = '6461'
+EXPERIMENT_ENTITY = 'Q231052'
+EXPERIMENTAL_RUN_ENTITY = 'Experimental run'
 
 
 def create_entity(wikibase_obj, name, description):
@@ -28,7 +32,7 @@ def create_entity(wikibase_obj, name, description):
 
 
 def link_dataset(wikibase_obj, run_entity, dataset_entity):
-    uses_prop =  wikibase_obj.Property().get(USES_DATASET_PROP)
+    uses_prop = wikibase_obj.Property().get(USES_DATASET_PROP)
     run_entity.claims.add(uses_prop, dataset_entity)
 
 
@@ -47,11 +51,11 @@ def retrieve_entity(wikibase_obj, entity_id):
     return entity
 
 
-def query_wikibase_sparql(item):
+def query_wikibase_sparql(entity_name):
     sparql = SPARQLWrapper(SPARQL_ENDPOINT)
     # Create query by selecting the objects that contain the item
     query = "PREFIX csv: <http://vocab.sindice.net/csv> \n SELECT * WHERE {?subject ?predicate \"" + \
-            item + "\"@en} LIMIT 10"
+            entity_name + "\"@en} LIMIT 10"
 
     # Query the server
     sparql.setQuery(query)
