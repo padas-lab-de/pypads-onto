@@ -5,7 +5,7 @@ from pypads.app.injections.base_logger import LoggingFunction
 from pypads.injections.analysis.call_tracker import LoggingEnv
 from pypads.utils.logging_util import WriteFormats, try_write_artifact
 from pypads.importext.mappings import LibSelector
-from pypads_onto.utils.wikibase_util import WIKIBASE_API_ENDPOINT, create_entity, query_wikibase_sparql
+from pypads_onto.utils.wikibase_util import WIKIBASE_API_ENDPOINT, create_entity, query_wikibase_sparql, retrieve_entity
 
 
 def create_run_entity(wikibase_object, name, description, experiment_name):
@@ -17,19 +17,19 @@ def create_run_entity(wikibase_object, name, description, experiment_name):
     :param experiment_name: Name of the experiment the run belongs to
     :return:
     """
-    from pypads_onto.utils.wikibase_util import PART_OF_PROP, INSTANCE_OF, EXPERIMENT_ENTITY, EXPERIMENTAL_RUN_ENTITY
+    from pypads_onto.utils.wikibase_util import PART_OF_PROP, INSTANCE_OF_PROP, EXPERIMENT_ENTITY, EXPERIMENTAL_RUN_ENTITY
 
     # Create the run entity
     run_entity = create_entity(wikibase_object, name, description)
 
-    property_instanceof = wikibase_object.Property().get(INSTANCE_OF)
+    property_instanceof = wikibase_object.Property().get(INSTANCE_OF_PROP)
 
     # Get the experiment using the experiment name
     experiment_entity = query_wikibase_sparql(entity_name=experiment_name)
     if len(experiment_entity) == 0:
 
         # Fetch instance of property and experiment entity from Wikibase
-        base_experiment_entity = wikibase_object.Item().get(EXPERIMENT_ENTITY)
+        base_experiment_entity = retrieve_entity(wikibase_object, EXPERIMENT_ENTITY)
 
         # Create the new experiment and link it to the experiment entity as
         # the current experiment is an instance of experiment
@@ -49,7 +49,7 @@ def create_run_entity(wikibase_object, name, description, experiment_name):
 
     # run_entity is an instance of Run entity
     experimental_run_entity = query_wikibase_sparql(entity_name=EXPERIMENTAL_RUN_ENTITY)
-    run_entity.claims.add(property_instanceof, EXPERIMENTAL_RUN_ENTITY)
+    run_entity.claims.add(property_instanceof, experimental_run_entity)
 
     return run_entity
 
@@ -64,7 +64,32 @@ def link_sklearn_estimators(wikibase_object, run_entity, sklearn_estimator):
     """
     # Get all hyperparameters of the estimator
     # Get all values of the hyperparameters for the run
+    # TODO: How will we add hyperparameters
     pass
+
+
+def link_run_metrics(wikibase_object, run_entity, metric_name, value):
+    """
+    Links an experimental run with a metric
+    :param wikibase_object:
+    :param run_entity:
+    :param metric_name:
+    :param value:
+    :return:
+    """
+    from pypads_onto.utils.wikibase_util import HAS_METRIC_PROP, HAS_VALUE_PROP
+    metric_entity = query_wikibase_sparql(entity_name=metric_name)
+    if len(metric_entity) == 0:
+        pass
+    elif len(metric_entity) == 1:
+        metric_entity = metric_entity[0]
+    else:
+        pass
+
+    has_metric_prop = wikibase_object.Property().get(HAS_METRIC_PROP)
+    has_value_prop = wikibase_object.Property().get(HAS_VALUE_PROP)
+    claim = run_entity.claims.add(has_metric_prop, metric_entity)
+    qualifier = claim.qualifiers.add(has_value_prop, value)
 
 
 class URILogger(LoggingFunction):

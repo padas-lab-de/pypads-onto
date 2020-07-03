@@ -12,9 +12,18 @@ SPARQL_ENDPOINT = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 # TODO: Create property uses_dataset
 USES_DATASET_PROP = 'P1234'
 PART_OF_PROP = 'P6465'
-INSTANCE_OF = '6461'
+INSTANCE_OF_PROP = 'P6461'
+HAS_VALUE_PROP = 'P6831'
+HAS_METRIC_PROP = 'P6832'
 EXPERIMENT_ENTITY = 'Q231052'
+
 EXPERIMENTAL_RUN_ENTITY = 'Experimental run'
+
+# Classification metric names
+F1_SCORE = "F1 score"
+ACCURACY = "Accuracy"
+Recall = "Recall"
+PRECISION = "Precision"
 
 
 def create_entity(wikibase_obj, name, description):
@@ -69,4 +78,3 @@ def query_wikibase_sparql(entity_name):
     for result in results["results"]["bindings"]:
         result_list.append(result["subject"]["value"])
     return result_list
-
