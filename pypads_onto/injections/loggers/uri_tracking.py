@@ -65,6 +65,7 @@ def link_sklearn_estimators(wikibase_object, run_entity, sklearn_estimator):
     # Get all hyperparameters of the estimator
     # Get all values of the hyperparameters for the run
     # TODO: How will we add hyperparameters
+    # Run has estimator, has hyperparameter which then has value. So it is two levels deep.
     pass
 
 
