@@ -1,13 +1,11 @@
 import atexit
-import json
 import logging
 import os
 import unittest
 from os.path import expanduser
 
-from pypads.app.injections.base_logger import LoggingFunction
-from pypads.app.pypads import logger, current_pads, set_current_pads, get_current_pads
-from pypads.importext.mappings import MappingFile
+from pypads.app.injections.injection import InjectionLogger
+from pypads.app.pypads import logger
 
 if "loguru" in str(logger):
     import pytest
@@ -25,7 +23,7 @@ if "loguru" in str(logger):
         yield _caplog
         logger_manager.remove(handler_id)
 
-TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-onto-test_" + str(os.getpid()))
+TEST_FOLDER = os.path.join(expanduser("~"), ".pypads-test_" + str(os.getpid()))
 
 
 def cleanup():
@@ -36,10 +34,6 @@ def cleanup():
 
 # TODO Is sometimes not run?
 atexit.register(cleanup)
-
-
-def _get_mapping(path):
-    return MappingFile(path)
 
 
 def mac_os_disabled(f):
@@ -73,17 +67,18 @@ class BaseTest(unittest.TestCase):
             set_current_pads(None)
 
 
-class RanLogger(LoggingFunction):
+class RanLogger(InjectionLogger):
     """ Adds id of self to cache. """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._run_count = 0
 
-    def __pre__(self, ctx, *args, _pypads_env, _args, _kwargs, **kwargs):
+    def __pre__(self, ctx, *args, _logger_call, _args, _kwargs, **kwargs):
+        from pypads.app.pypads import get_current_pads
         pads = get_current_pads()
         self._run_count += 1
         pads.cache.run_add(id(self), self._run_count)
 
-    def __post__(self, ctx, *args, _pypads_env, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
+    def __post__(self, ctx, *args, _logger_call, _pypads_pre_return, _pypads_result, _args, _kwargs, **kwargs):
         pass

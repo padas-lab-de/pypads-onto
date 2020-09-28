@@ -5,6 +5,8 @@ import sys
 from functools import partial
 from operator import attrgetter
 
+from pypads import logger
+
 REVISION_CMD = 'git rev-parse --short HEAD'
 
 
@@ -12,7 +14,7 @@ def _get_git_revision():
     try:
         revision = subprocess.check_output(REVISION_CMD.split()).strip()
     except subprocess.CalledProcessError:
-        print('Failed to execute git to get revision')
+        logger.info('Failed to execute git to get revision')
         return None
     return revision.decode('utf-8')
 
