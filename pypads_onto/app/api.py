@@ -26,7 +26,7 @@ class OntoPadsApi(IApi):
         return get_current_pads()
 
     def _convert_meta(self, meta: MetadataModel) -> IdBasedOntologyEntry:
-        entry = IdBasedOntologyEntry.from_orm(meta)
+        entry = IdBasedOntologyEntry(**dict(meta))
         entry.context = self._convert_context(entry.context)
 
         # TODO Build uris where needed
@@ -45,16 +45,18 @@ class OntoPadsApi(IApi):
         if isinstance(ctx, List):
             context = []
             for c in ctx:
-                if isinstance(c, HttpUrl) or isinstance(c, dict):
+                if isinstance(c, HttpUrl) or isinstance(c, dict) or (isinstance(c, str) and os.path.isfile(c)):
                     context.append(c)
                 else:
-                    splits = c.split(os.sep)
-                    context.append(self.pypads.backend.download_tmp_artifacts(splits[1], os.sep.join(splits[3:])))
+                    splits = c.split(os.sep+"artifacts"+os.sep)
+                    run_id = splits[0].split(os.sep)[-1]
+                    context.append(self.pypads.backend.download_tmp_artifacts(run_id, os.sep.join(splits[1:])))
             ctx = context
         else:
-            if not (isinstance(ctx, HttpUrl) or isinstance(ctx, dict)):
-                splits = ctx.split(os.sep)
-                ctx = self.pypads.backend.download_tmp_artifacts(splits[1], os.sep.join(splits[3:]))
+            if not (isinstance(ctx, HttpUrl) or isinstance(ctx, dict) or (isinstance(ctx, str) and os.path.isfile(ctx))):
+                splits = ctx.split(os.sep+"artifacts"+os.sep)
+                run_id = splits[0].split(os.sep)[-1]
+                ctx = self.pypads.backend.download_tmp_artifacts(run_id, os.sep.join(splits[1:]))
         return ctx
 
     @cmd
@@ -85,8 +87,8 @@ class OntoPadsApi(IApi):
         graph.parse(data=meta.json(by_alias=True), format="json-ld")
         if meta.file_format == FileFormats.json:
             content = info.content()
-            if "@context" in content:
-                content["@context"] = self._convert_context(content["@context"])
+            if "context" in content:
+                content["context"] = self._convert_context(content["context"])
             graph.parse(data=json.dumps(content), format="json-ld")
         # graph.add(_get_run_uri(info.meta.run_id), f"{ontology_uri}resulted_in", info.meta.uri)
         return graph
