@@ -82,7 +82,7 @@ class OntoPadsApi(IApi):
             graph = rdflib.Graph(identifier=graph_id)
 
         meta = self._convert_meta(info.meta)
-        graph.parse(meta.json(by_alias=True), format="json-ld")
+        graph.parse(data=meta.json(by_alias=True), format="json-ld")
         if meta.file_format == FileFormats.json:
             content = info.content()
             if "@context" in content:
