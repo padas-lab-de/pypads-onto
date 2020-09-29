@@ -61,12 +61,11 @@ class OntoPadsApi(IApi):
         return ctx
 
     @cmd
-    def convert_experiment_to_rdf(self, experiment_id, graph=None, graph_id=ontology_uri):
+    def convert_experiment_to_rdf(self, experiment_name, graph=None, graph_id=ontology_uri):
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
         graph.add((
-            URIRef(_get_experiment_uri(
-                experiment_name=self.pypads.backend.get_experiment(experiment_id=experiment_id).name)),
+            URIRef(_get_experiment_uri(experiment_name=experiment_name)),
             URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
             URIRef(f"{ontology_uri}Experiment")))
         return graph
@@ -134,53 +133,54 @@ class OntoPadsApi(IApi):
         return graph
 
     @cmd
-    def convert_to_rdf(self, experiment_id=None, run_id=None, graph=None, graph_id=ontology_uri):
+    def convert_to_rdf(self, experiment_name=None, run_id=None, graph=None, graph_id=ontology_uri):
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
 
         if run_id is None:
             # Get all experiments
-            if experiment_id is None:
+            if experiment_name is None:
                 experiments = self.pypads.backend.list_experiments()
                 for e in experiments:
-                    self.convert_to_rdf(experiment_id=e.experiment_id, graph=graph, graph_id=graph_id)
+                    self.convert_to_rdf(experiment_name=e.name, graph=graph, graph_id=graph_id)
                 return graph
 
             # Get all runs
-            run_infos = self.pypads.backend.list_run_infos(experiment_id=experiment_id)
+            run_infos = self.pypads.backend.list_run_infos(experiment_name=experiment_name)
             for run in run_infos:
-                self.convert_to_rdf(experiment_id=experiment_id, run_id=run.run_id, graph=graph, graph_id=graph_id)
+                self.convert_to_rdf(experiment_name=experiment_name, run_id=run.run_id, graph=graph, graph_id=graph_id)
             return graph
 
-        if experiment_id is None:
+        if experiment_name is None:
             run = self.pypads.api.get_run(run_id=run_id)
             experiment_id = run.info.experiment_id
+            experiment_name = self.pypads.backend.get_experiment(experiment_id).name
 
         if True:  # TODO check if already existing
-            self.convert_experiment_to_rdf(experiment_id=experiment_id, graph=graph, graph_id=graph_id)
+            self.convert_experiment_to_rdf(experiment_name=experiment_name, graph=graph, graph_id=graph_id)
 
         if True:  # TODO check if already existing
             self.convert_run_to_rdf(run_id=run_id, graph=graph, graph_id=graph_id)
 
-        artifacts = self.pypads.api.get_artifacts(experiment_id=experiment_id, run_id=run_id, path="*")
+        artifacts = self.pypads.api.get_artifacts(experiment_name=experiment_name, run_id=run_id, path="*")
         for a in artifacts:
             self.convert_artifact_to_rdf(a, graph=graph, graph_id=graph_id)
 
-        metrics = self.pypads.api.get_metrics(experiment_id=experiment_id, run_id=run_id)
+        metrics = self.pypads.api.get_metrics(experiment_name=experiment_name, run_id=run_id)
         for m in metrics:
             self.convert_metric_to_rdf(m, graph=graph, graph_id=graph_id)
 
-        parameters = self.pypads.api.get_parameters(experiment_id=experiment_id, run_id=run_id)
+        parameters = self.pypads.api.get_parameters(experiment_name=experiment_name, run_id=run_id)
         for p in parameters:
             self.convert_parameter_to_rdf(p, graph=graph, graph_id=graph_id)
 
-        tags = self.pypads.api.get_tags(experiment_id=experiment_id, run_id=run_id)
+        tags = self.pypads.api.get_tags(experiment_name=experiment_name, run_id=run_id)
         for t in tags:
             self.convert_tag_to_rdf(t, graph=graph, graph_id=graph_id)
         return graph
 
     @cmd
-    def push_rdf(self, experiment_id=None, run_id=None, graph_id=None):
+    def push_rdf(self, experiment_name=None, run_id=None, graph_id=None):
         from rdflib.plugins.stores import sparqlstore
         store = sparqlstore.SPARQLUpdateStore(self.pypads.config["sparql-query-endpoint"],
                                               self.pypads.config["sparql-update-endpoint"],
@@ -189,7 +189,7 @@ class OntoPadsApi(IApi):
         graph = rdflib.Graph(store, identifier=rdflib.URIRef(
             self.pypads.config["sparql-graph"] if graph_id is None else graph_id))
         graph.open((self.pypads.config["sparql-query-endpoint"], self.pypads.config["sparql-update-endpoint"]))
-        return self.convert_to_rdf(experiment_id=experiment_id, run_id=run_id, graph=graph)
+        return self.convert_to_rdf(experiment_name=experiment_name, run_id=run_id, graph=graph)
 
 
 def _get_experiment_uri(experiment_name):
