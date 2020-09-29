@@ -1,5 +1,6 @@
 import json
 import os
+import urllib
 from typing import List
 
 import rdflib
@@ -179,21 +180,20 @@ class OntoPadsApi(IApi):
         return graph
 
     @cmd
-    def push_rdf(self, experiment_id=None, run_id=None, graph=None, graph_id=None):
-        if graph is None:
-            from rdflib.plugins.stores import sparqlstore
-            store = sparqlstore.SPARQLUpdateStore(self.pypads.config["sparql-query-endpoint"],
-                                                  self.pypads.config["sparql-update-endpoint"],
-                                                  auth=(self.pypads.config["sparql-auth-name"],
-                                                        self.pypads.config["sparql-auth-password"]))
-            graph = rdflib.Graph(store, identifier=rdflib.URIRef(
-                self.pypads.config["sparql-graph"] if graph_id is None else graph_id))
-            graph.open((self.pypads.config["sparql-query-endpoint"], self.pypads.config["sparql-update-endpoint"]))
-        self.convert_to_rdf(experiment_id=experiment_id, run_id=run_id, graph=graph)
+    def push_rdf(self, experiment_id=None, run_id=None, graph_id=None):
+        from rdflib.plugins.stores import sparqlstore
+        store = sparqlstore.SPARQLUpdateStore(self.pypads.config["sparql-query-endpoint"],
+                                              self.pypads.config["sparql-update-endpoint"],
+                                              auth=(self.pypads.config["sparql-auth-name"],
+                                                    self.pypads.config["sparql-auth-password"]))
+        graph = rdflib.Graph(store, identifier=rdflib.URIRef(
+            self.pypads.config["sparql-graph"] if graph_id is None else graph_id))
+        graph.open((self.pypads.config["sparql-query-endpoint"], self.pypads.config["sparql-update-endpoint"]))
+        return self.convert_to_rdf(experiment_id=experiment_id, run_id=run_id, graph=graph)
 
 
 def _get_experiment_uri(experiment_name):
-    return f"{ontology_uri}Experiment#{experiment_name}"
+    return f"{ontology_uri}Experiment#{urllib.parse.quote(experiment_name)}"
 
 
 def _get_run_uri(run_id):

@@ -25,10 +25,10 @@ DEFAULT_ONTO_SETUP_FNS = {}
 # but define events on which different logging functions can listen.
 # This config defines such a listening structure.
 # {"recursive": track functions recursively. Otherwise check the callstack to only track the top level function.}
-DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://localhost:3030/pypads/query",
-                       "sparql-update-endpoint": "http://localhost:3030/pypads/update",
+DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://rdf.padre-lab.eu/pypads/query",
+                       "sparql-update-endpoint": "http://rdf.padre-lab.eu/pypads/update",
                        "sparql-auth-name": "admin",
-                       "sparql-auth-password": "5oDzbIK7stsBWt6",
+                       "sparql-auth-password": "7gaUOSf0jNWlxre",
                        "sparql-graph": ontology_uri}  # Virtuoso local test
 
 
@@ -46,7 +46,7 @@ def configure_plugin(pypads):
     mappings.default_mapping_file_paths.extend(
         glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bindings",
                                                "resources", "mapping", "**.json"))))
-    base.DEFAULT_SETUP_FNS = dict_merge_caches(base.DEFAULT_SETUP_FNS, DEFAULT_ONTO_SETUP_FNS)
+    base.DEFAULT_SETUP_FNS.update(DEFAULT_ONTO_SETUP_FNS)
     base.DEFAULT_CONFIG = dict_merge_caches(base.DEFAULT_CONFIG, DEFAULT_ONTO_CONFIG)
     events.DEFAULT_LOGGING_FNS = dict_merge_caches(events.DEFAULT_LOGGING_FNS, DEFAULT_ONTO_LOGGING_FNS)
     hooks.DEFAULT_HOOK_MAPPING = dict_merge_caches(hooks.DEFAULT_HOOK_MAPPING, DEFAULT_ONTO_HOOK_MAPPING)
