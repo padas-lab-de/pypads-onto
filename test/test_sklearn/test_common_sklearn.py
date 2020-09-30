@@ -21,6 +21,9 @@ class CommonSklearnTest(BaseSklearnTest):
         tracker.activate_tracking()
         tracker.start_track()
 
+        from pypads import logger
+        logger.info("Test logger")
+
         import timeit
         t = timeit.Timer(sklearn_simple_decision_tree_experiment)
         from pypads import logger
