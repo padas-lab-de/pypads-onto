@@ -30,7 +30,6 @@ class CommonSklearnTest(BaseSklearnTest):
         logger.info(t.timeit(1))
 
         # --------------------------- asserts ---------------------------
-        tracker.api.push_rdf(run_id=tracker.api.active_run().info.run_id)
 
         tracker.api.end_run()
         # !-------------------------- asserts ---------------------------

@@ -1,5 +1,6 @@
 import os
 from typing import Union, List
+from urllib.parse import quote
 
 from pydantic import BaseModel, HttpUrl, root_validator, Field, Extra
 from pypads.model.models import IdBasedEntry
@@ -10,9 +11,10 @@ from pypads_onto.arguments import ontology_uri
 
 DEFAULT_CONTEXT = {
     "@context": {
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "uri": "@id",
         "is_a": "@type",
-        "experiment_name": {
+        "experiment_uri": {
             "@id": f"{ontology_uri}contained_in",
             "@type": f"{ontology_uri}Experiment"
         },
@@ -102,9 +104,9 @@ class IdBasedOntologyEntry(OntologyEntry, IdBasedEntry):
     def set_default_uri(cls, values):
         if values['is_a'] is None:
             if 'category' in values:
-                values['is_a'] = f"{ontology_uri}{values['category']}"
-            if 'name' in values:
-                values['is_a'] = f"{ontology_uri}{values['name']}"
+                values['is_a'] = f"{ontology_uri}{quote(values['category'])}"
+            elif 'name' in values:
+                values['is_a'] = f"{ontology_uri}{quote(values['name'])}"
         if values['uri'] is None:
             values['uri'] = f"{values['is_a']}#{values['uid']}"
         return values

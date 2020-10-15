@@ -71,7 +71,7 @@ def query_wikibase_sparql(entity_name):
 
     # Convert the returned data
     sparql.setReturnFormat(JSON)
-    results = sparql.query().convert()
+    results = sparql.query()._convert()
 
     # populate the results list
     result_list = []
