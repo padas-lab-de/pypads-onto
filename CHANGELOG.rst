@@ -2,6 +2,18 @@ Changelog
 =========
 
 
+0.2.1 (2020-10-20)
+------------------
+
+New
+~~~
+- Version bump. [Thomas Weißgerber]
+
+Other
+~~~~~
+- Bump version: 0.2.0 → 0.2.1. [Thomas Weißgerber]
+
+
 0.2.0 (2020-10-20)
 ------------------
 
