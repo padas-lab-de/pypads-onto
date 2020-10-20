@@ -34,7 +34,7 @@ DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://rdf.padre-lab.eu/pypads/
                        "sparql-auth-password": "7gaUOSf0jNWlxre",
                        "sparql-graph": ontology_uri}
 
-DEFAULT_ONTO_CONVERTERS = [EstimatorConverter(), ParameterConverter(), TagConverter(), MetricConverter(),
+DEFAULT_ONTO_CONVERTERS = [ParameterConverter(), TagConverter(), MetricConverter(),
                            ArtifactConverter(), IgnoreConversion(storage_type=ResultType.logger_call)]
 
 

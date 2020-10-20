@@ -293,16 +293,6 @@ class ArtifactConverter(ObjectConverter):
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
 
-class EstimatorConverter(ObjectConverter):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(category="Estimator", *args, **kwargs)
-
-    def _convert(self, entry, graph):
-        # TODO add basic artifact t-box. This should be done by parsing additional data
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
-
-
 def _get_experiment_uri(experiment_name):
     return f"{ontology_uri}Experiment#{urllib.parse.quote(experiment_name)}"
 
