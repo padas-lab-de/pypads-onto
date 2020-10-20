@@ -2,6 +2,18 @@ Changelog
 =========
 
 
+0.2.2 (2020-10-20)
+------------------
+
+Fix
+~~~
+- Fixed import error. [Thomas Weißgerber]
+
+Other
+~~~~~
+- Bump version: 0.2.1 → 0.2.2. [Thomas Weißgerber]
+
+
 0.2.1 (2020-10-20)
 ------------------
 
