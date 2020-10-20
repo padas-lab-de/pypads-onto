@@ -20,7 +20,7 @@ from pypads_onto.bindings.events import DEFAULT_ONTO_LOGGING_FNS
 # --- Pypads App ---
 from pypads_onto.bindings.hooks import DEFAULT_ONTO_HOOK_MAPPING
 from pypads_onto.injections.converter import OntologyMLFlowBackendFactory, ParameterConverter, IgnoreConversion, \
-    EstimatorConverter, MetricConverter, TagConverter, ArtifactConverter
+    MetricConverter, TagConverter, ArtifactConverter
 
 DEFAULT_ONTO_SETUP_FNS = {}
 
