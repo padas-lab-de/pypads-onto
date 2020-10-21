@@ -68,7 +68,7 @@ def get_default_ctx_path():
         return os.path.join(default_ctx_path)
     except Exception as e:
         # Return context itself instead
-        return DEFAULT_CONTEXT
+        return DEFAULT_CONTEXT['@context']
 
 
 class OntologyEntry(BaseModel):
@@ -82,7 +82,7 @@ class OntologyEntry(BaseModel):
     def add_context(cls, values):
         if values['context'] is None:
             values['context'] = get_default_ctx_path()
-        else:
+        elif values['storage_type'] is not ResultType.embedded:
             if isinstance(values['context'], List):
                 if len(values['context']) > 0:
                     if values['context'][0] != get_default_ctx_path():

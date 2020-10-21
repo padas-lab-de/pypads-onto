@@ -106,7 +106,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
 
         rdf, json_ld = self._parse_additional_data(obj.dict(include={'additional_data'}))
         entry = ExtendedIdBasedOntologyEntry(
-            **dict_merge(obj.dict(), rdf))
+            **dict_merge(obj.dict(by_alias=True), rdf))
         entry.context = self._convert_context(entry.context)
 
         # Create experiment if it doesn't exist
