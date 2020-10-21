@@ -30,7 +30,7 @@ DEFAULT_CONTEXT = {
             "@id": f"{ontology_uri}label",
             "@type": "http://www.w3.org/2001/XMLSchema#string"
         },
-        "context": {
+        "in_context": {
             "@id": f"{ontology_uri}relates_to",
             "@type": f"{ontology_uri}Context"
         },
