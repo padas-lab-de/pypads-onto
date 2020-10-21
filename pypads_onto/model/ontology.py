@@ -3,7 +3,7 @@ from typing import Union, List
 from urllib.parse import quote
 
 from pydantic import BaseModel, HttpUrl, root_validator, Field, Extra
-from pypads.model.models import IdBasedEntry
+from pypads.model.models import IdBasedEntry, ResultType
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import persistent_hash
 
@@ -114,3 +114,7 @@ class IdBasedOntologyEntry(OntologyEntry, IdBasedEntry):
     class Config:
         orm_mode = True
         extra = Extra.allow
+
+
+class EmbeddedOntologyEntry(IdBasedOntologyEntry):
+    storage_type: Union[ResultType, str] = ResultType.embedded  # This should not be stored into the mongodb
