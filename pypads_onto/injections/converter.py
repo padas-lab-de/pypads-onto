@@ -1,22 +1,23 @@
+import collections
 import os
 import urllib
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pydantic
 import rdflib
-from pydantic import HttpUrl, Extra
+from pydantic import HttpUrl, Extra, Field
 from pypads import logger
 from pypads.app.backends.mlflow import MLFlowBackend, MLFlowBackendFactory
 from pypads.app.misc.mixins import CallableMixin
-from pypads.model.models import ResultType
+from pypads.model.models import ResultType, IdReference, RunObjectModel
 from pypads.utils.logging_util import data_path
 from pypads.utils.util import dict_merge, persistent_hash
 from rdflib import URIRef
 from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
-from pypads_onto.model.ontology import IdBasedOntologyEntry
+from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel
 
 register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
@@ -89,6 +90,42 @@ def store_hash(*args):
     return False
 
 
+class ExtendedIdBasedOntologyModel(IdBasedOntologyModel):
+    class Config:
+        extra = Extra.allow
+
+
+class ExtendedEmbeddedOntologyModel(EmbeddedOntologyModel):
+    class Config:
+        extra = Extra.allow
+
+
+def _extend_dict(obj_dict):
+    """
+    Used to extend the given with uris.
+    :return:
+    """
+    out = {}
+    for k, v in obj_dict.items():
+        out[k] = _extend_helper(v)
+    return out
+
+
+# Hacky solution to add missing URI values into references etc.
+def _extend_helper(v):
+    if isinstance(v, dict):
+        if ('category' in v and (v['category'] == 'Experiment' or v['category'] == 'Run')) or 'storage_type' in v:
+            return _extend_dict(ExtendedEmbeddedOntologyModel(**v).dict())
+        return _extend_dict(v)
+    elif isinstance(v, list):
+        array = []
+        for entry in v:
+            array = _extend_helper(entry)
+        return array
+    else:
+        return v
+
+
 class ObjectConverter(CallableMixin, metaclass=ABCMeta):
     """
     Converts a given storage_type object or category type object to rdf injected into the relative object. Additionally
@@ -104,25 +141,21 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
 
-        rdf, json_ld = self._parse_additional_data(obj.dict(include={'additional_data'}))
-        entry = ExtendedIdBasedOntologyEntry(
-            **dict_merge(obj.dict(by_alias=True), rdf))
-        entry.context = self._convert_context(entry.context)
+        rdf, json_ld = self._parse_additional_data(obj.dict(validate=False, include={'additional_data'}))
 
-        # Create experiment if it doesn't exist
-        if "experiment_uri" in entry and entry.experiment_uri is not None:
-            if store_hash(graph.identifier, entry.experiment_uri):
-                self._experiment_to_rdf(entry.experiment_uri, graph)
-        if "run_uri" in entry and entry.run_uri is not None:
-            if store_hash(graph.identifier, entry.run_uri):
-                self._run_to_rdf(entry.run_uri, graph)
+        obj_dict = dict_merge(obj.dict(by_alias=True), rdf)
+        obj_dict = _extend_dict(obj_dict)
+        entry = ExtendedIdBasedOntologyModel(
+            **obj_dict)
+        if entry.context is not None:
+            entry.context = self._convert_context(entry.context)
 
         out = self._convert(entry, graph)
         self._add_json_ld(entry, json_ld, graph)
         return out
 
     @abstractmethod
-    def _convert(self, obj, graph):
+    async def _convert(self, obj, graph):
         raise NotImplementedError("Missing implementation for the conversion of the object")
 
     def _add_json_ld(self, entry, json_ld, graph):
@@ -131,24 +164,6 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
                 j["@context"] = self._convert_context(
                     dict_merge(entry.context, j["@context"])) if "@context" in j else entry.context
                 graph.parse(data=json_ld, format="json-ld")
-
-    @classmethod
-    def _experiment_to_rdf(cls, experiment_uri, graph):
-        # Check if triple about experiment exists
-        if (URIRef(experiment_uri), None, None) not in graph:
-            graph.add((
-                URIRef(experiment_uri),
-                URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
-                URIRef(f"{ontology_uri}Experiment")))
-        return graph
-
-    @classmethod
-    def _run_to_rdf(cls, run_uri, graph):
-        # Check if triple about experiment exists
-        if (URIRef(run_uri), None, None) not in graph:
-            graph.add((URIRef(run_uri), URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"),
-                       URIRef(f"{ontology_uri}Run")))
-        return graph
 
     @classmethod
     def _parse_additional_data(cls, obj):
@@ -237,7 +252,7 @@ class IgnoreConversion(ObjectConverter):
     This converter can be implemented if some category or storage type should be ignored.
     """
 
-    def _convert(self, obj, graph):
+    async def _convert(self, obj, graph):
         raise NotImplementedError("Store")
 
     def __real_call__(self, *args, **kwargs):
@@ -246,7 +261,7 @@ class IgnoreConversion(ObjectConverter):
 
 class GenericConverter(ObjectConverter):
 
-    def _convert(self, entry, graph):
+    async def _convert(self, entry, graph):
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
     def is_applicable(self, obj):
@@ -258,7 +273,7 @@ class ParameterConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
-    def _convert(self, entry, graph):
+    async def _convert(self, entry, graph):
         # TODO add basic parameter t-box. This should be done by parsing additional data
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
@@ -268,7 +283,7 @@ class MetricConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.metric, *args, **kwargs)
 
-    def _convert(self, entry, graph):
+    async def _convert(self, entry, graph):
         # TODO add basic metric t-box. This should be done by parsing additional data
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
@@ -278,7 +293,7 @@ class TagConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.tag, *args, **kwargs)
 
-    def _convert(self, entry, graph):
+    async def _convert(self, entry, graph):
         # TODO add basic tag t-box. This should be done by parsing additional data
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
@@ -288,30 +303,6 @@ class ArtifactConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.artifact, *args, **kwargs)
 
-    def _convert(self, entry, graph):
+    async def _convert(self, entry, graph):
         # TODO add basic artifact t-box. This should be done by parsing additional data
         return graph.parse(data=entry.json(by_alias=True), format="json-ld")
-
-
-def _get_experiment_uri(experiment_name):
-    return f"{ontology_uri}Experiment#{urllib.parse.quote(experiment_name)}"
-
-
-def _get_run_uri(run_id):
-    return f"{ontology_uri}Run#{run_id}"
-
-
-class ExtendedIdBasedOntologyEntry(IdBasedOntologyEntry):
-    experiment_uri: Optional[HttpUrl] = None
-    run_uri: Optional[HttpUrl] = None
-
-    @pydantic.validator('experiment_uri', pre=True, always=True)
-    def default_experiment_uri(cls, v, *, values, **kwargs):
-        return v or _get_experiment_uri(values["experiment_name"]) if 'experiment_name' in values else None
-
-    @pydantic.validator('run_uri', pre=True, always=True)
-    def default_run_uri(cls, v, *, values, **kwargs):
-        return v or _get_run_uri(values["run_id"]) if 'run_id' in values else None
-
-    class Config:
-        extra = Extra.allow

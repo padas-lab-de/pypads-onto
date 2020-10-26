@@ -1,7 +1,6 @@
 from typing import List
 
 import rdflib
-from pypads import logger
 from pypads.app.api import IApi, cmd
 
 from pypads_onto.arguments import ontology_uri
@@ -35,10 +34,7 @@ class OntoPadsApi(IApi):
 
         for c in converters_:
             if c.is_applicable(obj):
-                try:
-                    c(obj, graph)
-                except Exception as e:
-                    logger.error(f"Couldn't convert {str(obj)} to RDF because of {str(e)}")
+                c(obj, graph)
                 break
         return graph
 

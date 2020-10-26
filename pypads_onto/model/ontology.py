@@ -1,9 +1,9 @@
 import os
-from typing import Union, List
+from typing import Union, List, Optional
 from urllib.parse import quote
 
-from pydantic import BaseModel, HttpUrl, root_validator, Field, Extra
-from pypads.model.models import IdBasedEntry, ResultType
+from pydantic import BaseModel, HttpUrl, root_validator, Field, validator
+from pypads.model.models import ResultType, BaseIdModel, BackendObjectModel, EntryModel, AbstractionType
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import persistent_hash
 
@@ -14,11 +14,11 @@ DEFAULT_CONTEXT = {
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
         "uri": "@id",
         "is_a": "@type",
-        "experiment_uri": {
+        "experiment": {
             "@id": f"{ontology_uri}contained_in",
             "@type": f"{ontology_uri}Experiment"
         },
-        "run_id": {
+        "run": {
             "@id": f"{ontology_uri}contained_in",
             "@type": f"{ontology_uri}Run"
         },
@@ -71,7 +71,7 @@ def get_default_ctx_path():
         return DEFAULT_CONTEXT['@context']
 
 
-class OntologyEntry(BaseModel):
+class OntologyModel(BaseModel):
     """
     Object representing an (potential) entry in a knowledge base
     """
@@ -80,41 +80,50 @@ class OntologyEntry(BaseModel):
 
     @root_validator
     def add_context(cls, values):
-        if values['context'] is None:
-            values['context'] = get_default_ctx_path()
-        elif values['storage_type'] is not ResultType.embedded:
-            if isinstance(values['context'], List):
+        if ('storage_type' in values
+            and values['storage_type'] not in {ResultType.embedded, ResultType.repository_entry}) and not (
+                'abstraction_type' in values and values['abstraction_type'] == AbstractionType.reference):
+            if values['context'] is None:
+                values['context'] = get_default_ctx_path()
+            elif isinstance(values['context'], List):
                 if len(values['context']) > 0:
                     if values['context'][0] != get_default_ctx_path():
                         values['context'].append(get_default_ctx_path())
-            else:
-                if values['context'] != get_default_ctx_path():
-                    values['context'] = [get_default_ctx_path(), values['context']]
+            elif values['context'] != get_default_ctx_path():
+                values['context'] = [get_default_ctx_path(), values['context']]
         return values
 
 
-class IdBasedOntologyEntry(OntologyEntry, IdBasedEntry):
+class IdBasedOntologyModel(OntologyModel, BaseIdModel):
     """
     An ontology entry getting its uri build via is_a and id combination.
     """
     is_a: HttpUrl = None
     uri: HttpUrl = None
+    category: Optional[str]  # Human readable class representation. This will be converted in ontology entries.
+    name: Optional[str]  # Alternative Human readable instance representation.
 
     @root_validator
     def set_default_uri(cls, values):
         if values['is_a'] is None:
-            if 'category' in values:
+            if 'category' in values and values['category'] is not None:
                 values['is_a'] = f"{ontology_uri}{quote(values['category'])}"
-            elif 'name' in values:
+            elif 'name' in values and values['name'] is not None:
                 values['is_a'] = f"{ontology_uri}{quote(values['name'])}"
+            else:
+                raise ValueError("Value for is_a is not given and can't be derived")
         if values['uri'] is None:
             values['uri'] = f"{values['is_a']}#{values['uid']}"
         return values
 
     class Config:
         orm_mode = True
-        extra = Extra.allow
 
 
-class EmbeddedOntologyEntry(IdBasedOntologyEntry):
-    storage_type: Union[ResultType, str] = ResultType.embedded  # This should not be stored into the mongodb
+class EmbeddedOntologyModel(IdBasedOntologyModel):
+    storage_type: Union[ResultType, str] = None  # This should not be stored into the mongodb
+    context: Optional[Union[List[Union[str, dict]], str, dict]]
+
+    @validator('storage_type', pre=True, always=True)
+    def default_ts_modified(cls, v, *, values, **kwargs):
+        return v or ResultType.embedded

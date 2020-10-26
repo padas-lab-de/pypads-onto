@@ -22,7 +22,7 @@ mappings:
         - parameters.execution_parameters.@schema
       '@rdf':
         mapped_by: http://www.padre-lab.eu/PyPadsInjection
-        defined_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
+        implemented_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
     !!python/pPath 'base.BaseEstimator':
       ;default_model: null
       __init__:

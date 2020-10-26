@@ -2,6 +2,8 @@ import glob
 import os
 
 from pypads.app import base
+# Overwrite the default BackendFactory of PyPads to produce Ontology support
+from pypads.app.backends import mlflow
 from pypads.bindings import events
 from pypads.bindings import hooks
 from pypads.importext import mappings
@@ -17,10 +19,33 @@ from pypads_onto.arguments import ontology_uri
 from pypads_onto.bindings.anchors import init_anchors
 from pypads_onto.bindings.event_types import init_event_types
 from pypads_onto.bindings.events import DEFAULT_ONTO_LOGGING_FNS
-# --- Pypads App ---
 from pypads_onto.bindings.hooks import DEFAULT_ONTO_HOOK_MAPPING
-from pypads_onto.injections.converter import OntologyMLFlowBackendFactory, ParameterConverter, IgnoreConversion, \
+from pypads_onto.injections.converter import OntologyMLFlowBackendFactory
+from pypads_onto.injections.converter import ParameterConverter, IgnoreConversion, \
     MetricConverter, TagConverter, ArtifactConverter
+
+mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
+
+# Overwrite the reference objects for additional Ontology support
+# original_ref = models.get_reference_class
+#
+# ref_classes = {}
+#
+#
+# def get_reference_class(dict_obj):
+#     clazz = original_ref(dict_obj)
+#
+#     if clazz not in ref_classes:
+#         class UriExtendedRef(clazz, EmbeddedOntologyModel):
+#             pass
+#
+#         ref_classes[clazz] = UriExtendedRef
+#
+#     uri_clazz = ref_classes[clazz]
+#     return uri_clazz
+#
+#
+# models.get_reference_class = get_reference_class
 
 DEFAULT_ONTO_SETUP_FNS = {}
 
@@ -65,9 +90,3 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
     init_event_types()
     init_anchors()
     return actuators, validators, decorators, api, results
-
-
-# Overwrite the default BackendFactory of PyPads to produce Ontology support
-from pypads.app.backends import mlflow
-
-mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
