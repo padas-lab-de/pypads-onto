@@ -1,19 +1,18 @@
-import collections
 import os
-import urllib
+import threading
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional, Union
+from json import dumps
+from typing import List
 
-import pydantic
 import rdflib
-from pydantic import HttpUrl, Extra, Field
+from pydantic import HttpUrl, Extra, BaseModel
 from pypads import logger
 from pypads.app.backends.mlflow import MLFlowBackend, MLFlowBackendFactory
 from pypads.app.misc.mixins import CallableMixin
-from pypads.model.models import ResultType, IdReference, RunObjectModel
+from pypads.model.metadata import ModelObject
+from pypads.model.models import ResultType
 from pypads.utils.logging_util import data_path
 from pypads.utils.util import dict_merge, persistent_hash
-from rdflib import URIRef
 from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
@@ -141,10 +140,20 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
 
-        rdf, json_ld = self._parse_additional_data(obj.dict(validate=False, include={'additional_data'}))
+        if isinstance(obj, ModelObject):
+            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'})['additional_data']
+            obj_dict = obj.dict(by_alias=True)
+        elif isinstance(obj, BaseModel):
+            data_dict = obj.dict(by_alias=True, include={'additional_data'})['additional_data']
+            obj_dict = obj.dict(by_alias=True)
+        elif isinstance(obj, dict):
+            data_dict = obj['additional_data'] if 'additional_data' in obj else {}
+            obj_dict = obj
+        else:
+            raise Exception(f"Can't convert {obj} to rdf.")
 
-        obj_dict = dict_merge(obj.dict(by_alias=True), rdf)
-        obj_dict = _extend_dict(obj_dict)
+        rdf, json_ld = self._parse_additional_data(data_dict)
+        obj_dict = _extend_dict(dict_merge(obj_dict, rdf))
         entry = ExtendedIdBasedOntologyModel(
             **obj_dict)
         if entry.context is not None:
@@ -155,7 +164,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         return out
 
     @abstractmethod
-    async def _convert(self, obj, graph):
+    def _convert(self, obj, graph):
         raise NotImplementedError("Missing implementation for the conversion of the object")
 
     def _add_json_ld(self, entry, json_ld, graph):
@@ -163,10 +172,13 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
             if store_hash(graph.identifier, str(j)):
                 j["@context"] = self._convert_context(
                     dict_merge(entry.context, j["@context"])) if "@context" in j else entry.context
-                graph.parse(data=json_ld, format="json-ld")
+                try:
+                    graph.parse(data=dumps(j), format="json-ld")
+                except Exception:
+                    logger.warning(f"Couldn't translate {j} to rdf.")
 
     @classmethod
-    def _parse_additional_data(cls, obj):
+    def _parse_additional_data(cls, data):
         """
         This function is to be called before converting a metadata model to rdf.
         It extracts rdf information from the additional_data dict and inserts it into the related json-ld document.
@@ -174,31 +186,33 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         :return:
         """
         rdf = {}
-        if "additional_data" in obj:
-            data = obj["additional_data"]
-            if data is not None and "@rdf" in data:
-                rdf = data["@rdf"]
+        if data is not None and "@rdf" in data:
+            rdf = data["@rdf"]
 
         json_ld = {}
-        if "additional_data" in obj:
-            data = obj["additional_data"]
-            if data is not None and "@json_ld" in data:
-                array = data["@json_ld"]
-                json_ld = []
-                for entry in array:
-                    if isinstance(entry, str):
-                        val = data_path(data, *entry.split("."))
-                        if val is not None and isinstance(val, dict):
+        if data is not None and "@json-ld" in data:
+            array = data["@json-ld"]
+            json_ld = []
+            for entry in array:
+                if isinstance(entry, str):
+                    val = data_path(data, *entry.split("."))
+                    if val is not None:
+                        if isinstance(val, dict):
                             json_ld.append(val)
+                        elif isinstance(val, list):
+                            json_ld.extend(val)
                         else:
                             logger.warning(
-                                f"Mapping file doesn't define a json-ld in additional data at: {entry}.")
-                    elif isinstance(entry, dict):
-                        json_ld.append(entry)
+                                f"Found value at {entry} was not valid.")
                     else:
                         logger.warning(
-                            f"Mapping file provided an invalid json-ld: {entry}. "
-                            f"Json-ld has to be either an json-ld directly or an json path in additional data.")
+                            f"Mapping file doesn't define a json-ld in additional data at: {entry}.")
+                elif isinstance(entry, dict):
+                    json_ld.append(entry)
+                else:
+                    logger.warning(
+                        f"Mapping file provided an invalid json-ld: {entry}. "
+                        f"Json-ld has to be either an json-ld directly or an json path in additional data.")
         return rdf, json_ld
 
     @classmethod
@@ -261,8 +275,11 @@ class IgnoreConversion(ObjectConverter):
 
 class GenericConverter(ObjectConverter):
 
-    async def _convert(self, entry, graph):
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
+    def _convert(self, entry, graph):
+        def parse():
+            graph.parse(data=entry.json(by_alias=True), format="json-ld")
+
+        threading.Thread(target=parse).start()
 
     def is_applicable(self, obj):
         return True
@@ -273,9 +290,12 @@ class ParameterConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
-    async def _convert(self, entry, graph):
+    def _convert(self, entry, graph):
         # TODO add basic parameter t-box. This should be done by parsing additional data
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
+        def parse():
+            graph.parse(data=entry.json(by_alias=True), format="json-ld")
+
+        threading.Thread(target=parse).start()
 
 
 class MetricConverter(ObjectConverter):
@@ -283,9 +303,12 @@ class MetricConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.metric, *args, **kwargs)
 
-    async def _convert(self, entry, graph):
+    def _convert(self, entry, graph):
         # TODO add basic metric t-box. This should be done by parsing additional data
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
+        def parse():
+            graph.parse(data=entry.json(by_alias=True), format="json-ld")
+
+        threading.Thread(target=parse).start()
 
 
 class TagConverter(ObjectConverter):
@@ -293,9 +316,12 @@ class TagConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.tag, *args, **kwargs)
 
-    async def _convert(self, entry, graph):
+    def _convert(self, entry, graph):
         # TODO add basic tag t-box. This should be done by parsing additional data
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
+        def parse():
+            graph.parse(data=entry.json(by_alias=True), format="json-ld")
+
+        threading.Thread(target=parse).start()
 
 
 class ArtifactConverter(ObjectConverter):
@@ -303,6 +329,9 @@ class ArtifactConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.artifact, *args, **kwargs)
 
-    async def _convert(self, entry, graph):
+    def _convert(self, entry, graph):
         # TODO add basic artifact t-box. This should be done by parsing additional data
-        return graph.parse(data=entry.json(by_alias=True), format="json-ld")
+        def parse():
+            graph.parse(data=entry.json(by_alias=True), format="json-ld")
+
+        threading.Thread(target=parse).start()

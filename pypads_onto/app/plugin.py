@@ -82,7 +82,7 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
 
     mappings.default_mapping_file_paths.extend(
         glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bindings",
-                                               "resources", "mapping", "**.json"))))
+                                               "resources", "mapping", "**.yml"))))
     base.DEFAULT_SETUP_FNS.update(DEFAULT_ONTO_SETUP_FNS)
     base.DEFAULT_CONFIG = dict_merge(base.DEFAULT_CONFIG, DEFAULT_ONTO_CONFIG)
     events.DEFAULT_LOGGING_FNS = dict_merge(events.DEFAULT_LOGGING_FNS, DEFAULT_ONTO_LOGGING_FNS)

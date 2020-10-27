@@ -2,7 +2,7 @@ import os
 from typing import Union, List, Optional
 from urllib.parse import quote
 
-from pydantic import BaseModel, HttpUrl, root_validator, Field, validator
+from pydantic import BaseModel, HttpUrl, root_validator, Field, validator, Extra
 from pypads.model.models import ResultType, BaseIdModel, BackendObjectModel, EntryModel, AbstractionType
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import persistent_hash
@@ -12,6 +12,7 @@ from pypads_onto.arguments import ontology_uri
 DEFAULT_CONTEXT = {
     "@context": {
         "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "padre": f"{ontology_uri}",
         "uri": "@id",
         "is_a": "@type",
         "experiment": {

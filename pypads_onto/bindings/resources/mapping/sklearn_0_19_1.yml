@@ -13,13 +13,13 @@ mappings:
     data:
       '@json-ld': # Path to json-lds to be added to the ontology with onto-pads
         - estimator.@schema # A-Box estimator class
-        - estimator.alogorithm.@schema # T-Box algorithm mathematical concept
-        - parameters.model_parameters.algorithm.@schema # T-Box parameter info ...
-        - parameters.optimisation_parameters.algorithm.@schema
-        - parameters.execution_parameters.algorithm.@schema
-        - parameters.model_parameters.@schema # A-Box estimator ...
-        - parameters.optimisation_parameters.@schema
-        - parameters.execution_parameters.@schema
+        - estimator.algorithm.@schema # T-Box algorithm mathematical concept
+        - estimator.parameters.model_parameters.algorithm.@schema # T-Box parameter info ...
+        - estimator.parameters.optimisation_parameters.algorithm.@schema
+        - estimator.parameters.execution_parameters.algorithm.@schema
+        - estimator.parameters.model_parameters.@schema # A-Box parameter ...
+        - estimator.parameters.optimisation_parameters.@schema
+        - estimator.parameters.execution_parameters.@schema
       '@rdf':
         mapped_by: http://www.padre-lab.eu/PyPadsInjection
         implemented_in: http://www.padre-lab.eu/onto/Sklearn#0.19.1
