@@ -159,9 +159,20 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         if entry.context is not None:
             entry.context = self._convert_context(entry.context)
 
+        entry, json_ld = self._prepare_insertion(entry, json_ld)
+
         out = self._convert(entry, graph)
         self._add_json_ld(entry, json_ld, graph)
         return out
+
+    def _prepare_insertion(self, entry, json_ld):
+        """
+        Function to react to missing schema information and add missing values.
+        :param entry:
+        :param json_ld:
+        :return:
+        """
+        return entry, json_ld
 
     @abstractmethod
     def _convert(self, obj, graph):
@@ -290,6 +301,14 @@ class ParameterConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
+    def _prepare_insertion(self, entry, json_ld):
+
+        if json_ld is None:
+            # No schema definition was defined by the mapping file for parameter TODO trying to extract a Schema
+            pass
+
+        return entry, json_ld
+
     def _convert(self, entry, graph):
         # TODO add basic parameter t-box. This should be done by parsing additional data
         def parse():
@@ -302,6 +321,14 @@ class MetricConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.metric, *args, **kwargs)
+
+    def _prepare_insertion(self, entry, json_ld):
+
+        if json_ld is None:
+            # No schema definition was defined by the mapping file for metric TODO trying to extract a Schema
+            pass
+
+        return entry, json_ld
 
     def _convert(self, entry, graph):
         # TODO add basic metric t-box. This should be done by parsing additional data
