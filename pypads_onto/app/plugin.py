@@ -24,8 +24,6 @@ from pypads_onto.injections.converter import OntologyMLFlowBackendFactory
 from pypads_onto.injections.converter import ParameterConverter, IgnoreConversion, \
     MetricConverter, TagConverter, ArtifactConverter
 
-mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
-
 # Overwrite the reference objects for additional Ontology support
 # original_ref = models.get_reference_class
 #
@@ -69,6 +67,7 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
     plugin. Multiple executions should be possible.
     :return:
     """
+    mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
     if converters is None:
         converters = []
     actuators = OntoPadsActuators()

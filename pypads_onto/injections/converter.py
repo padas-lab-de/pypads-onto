@@ -141,10 +141,10 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
             graph = rdflib.Graph(identifier=graph_id)
 
         if isinstance(obj, ModelObject):
-            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'})['additional_data']
+            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'}).get('additional_data',None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, BaseModel):
-            data_dict = obj.dict(by_alias=True, include={'additional_data'})['additional_data']
+            data_dict = obj.dict(by_alias=True, include={'additional_data'}).get('additional_data',None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, dict):
             data_dict = obj['additional_data'] if 'additional_data' in obj else {}
