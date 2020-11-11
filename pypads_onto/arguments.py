@@ -16,7 +16,7 @@ def parse_configfile(path, parsed_args):
 
     SPARQL = config['SPARQL']
 
-    # MLflow & Mongo DB related env variables
+    # Sparql related env variables
     pypads_envs = {"SPARQL_GRAPH": parsed_args.OntologyUri,
                    "SPARQL_QUERY_ENDPOINT": parsed_args.SPARQL_QUERY_ENDPOINT,
                    "SPARQL_UPDATE_ENDPOINT": parsed_args.SPARQL_UPDATE_ENDPOINT,
