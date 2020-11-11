@@ -48,12 +48,12 @@ class OntologyMLFlowBackendFactory:
 
             def log(self, obj):
                 from rdflib.plugins.stores import sparqlstore
-                store = sparqlstore.SPARQLUpdateStore(self.pypads.config["sparql-query-endpoint"],
-                                                      self.pypads.config["sparql-update-endpoint"],
-                                                      auth=(self.pypads.config["sparql-auth-name"],
-                                                            self.pypads.config["sparql-auth-password"]))
-                graph = rdflib.Graph(store, identifier=rdflib.URIRef(self.pypads.config["sparql-graph"]))
-                graph.open((self.pypads.config["sparql-query-endpoint"], self.pypads.config["sparql-update-endpoint"]))
+                store = sparqlstore.SPARQLUpdateStore(os.environ["SPARQL_QUERY_ENDPOINT"],
+                                                      os.environ["SPARQL_UPDATE_ENDPOINT"],
+                                                      auth=(os.environ["SPARQL_AUTH_NAME"],
+                                                            os.environ["SPARQL_AUTH_PASSWORD"]))
+                graph = rdflib.Graph(store, identifier=rdflib.URIRef(os.environ["SPARQL_GRAPH"]))
+                graph.open((os.environ["SPARQL_QUERY_ENDPOINT"], os.environ["SPARQL_UPDATE_ENDPOINT"]))
 
                 """
                 TODO check type and generate missing data.

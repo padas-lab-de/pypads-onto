@@ -51,11 +51,7 @@ DEFAULT_ONTO_SETUP_FNS = {}
 # Pypads mapping files shouldn't interact directly with the logging functions,
 # but define events on which different logging functions can listen.
 # This config defines such a listening structure.
-DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://rdf.padre-lab.eu/pypads/query",
-                       "sparql-update-endpoint": "http://rdf.padre-lab.eu/pypads/update",
-                       "sparql-auth-name": "admin",
-                       "sparql-auth-password": "7gaUOSf0jNWlxre",
-                       "sparql-graph": ontology_uri}
+DEFAULT_ONTO_CONFIG = {}
 
 DEFAULT_ONTO_CONVERTERS = [ParameterConverter(), TagConverter(), MetricConverter(),
                            ArtifactConverter(), IgnoreConversion(storage_type=ResultType.logger_call)]
