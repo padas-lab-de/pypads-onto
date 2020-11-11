@@ -21,8 +21,9 @@ from pypads_onto.bindings.event_types import init_event_types
 from pypads_onto.bindings.events import DEFAULT_ONTO_LOGGING_FNS
 from pypads_onto.bindings.hooks import DEFAULT_ONTO_HOOK_MAPPING
 from pypads_onto.injections.converter import OntologyMLFlowBackendFactory
-from pypads_onto.injections.converter import ParameterConverter, IgnoreConversion, \
+from pypads_onto.injections.converter import IgnoreConversion, \
     MetricConverter, TagConverter, ArtifactConverter
+from pypads_onto.model.parameters import ParameterConverter
 
 mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
 
@@ -59,9 +60,6 @@ DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://rdf.padre-lab.eu/pypads/
                        "sparql-auth-password": "7gaUOSf0jNWlxre",
                        "sparql-graph": ontology_uri}
 
-DEFAULT_ONTO_CONVERTERS = [ParameterConverter(), TagConverter(), MetricConverter(),
-                           ArtifactConverter(), IgnoreConversion(storage_type=ResultType.logger_call)]
-
 
 def configure_plugin(pypads, *args, converters=None, **kwargs):
     """
@@ -76,9 +74,6 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
     decorators = OntoPadsDecorators()
     results = OntoPadsResults()
     api = OntoPadsApi()
-
-    converters.extend(DEFAULT_ONTO_CONVERTERS)
-    setattr(pypads, "rdf_converters", converters)
 
     mappings.default_mapping_file_paths.extend(
         glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bindings",

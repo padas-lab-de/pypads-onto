@@ -3,7 +3,7 @@ from typing import Union, List, Optional
 from urllib.parse import quote
 
 from pydantic import BaseModel, HttpUrl, root_validator, Field, validator, Extra
-from pypads.model.models import ResultType, BaseIdModel, BackendObjectModel, EntryModel, AbstractionType
+from pypads.model.models import ResultType, BaseIdModel, AbstractionType
 from pypads.utils.logging_util import FileFormats
 from pypads.utils.util import persistent_hash
 
@@ -122,9 +122,105 @@ class IdBasedOntologyModel(OntologyModel, BaseIdModel):
 
 
 class EmbeddedOntologyModel(IdBasedOntologyModel):
-    storage_type: Union[ResultType, str] = None  # This should not be stored into the mongodb
+    storage_type: Union[ResultType, str] = None  # This object should not be stored as separate object
     context: Optional[Union[List[Union[str, dict]], str, dict]]
 
     @validator('storage_type', pre=True, always=True)
     def default_ts_modified(cls, v, *, values, **kwargs):
         return v or ResultType.embedded
+
+
+mapping_json_ld = {}
+
+
+def rdf(_cls=None, *, path):
+    mapping_json_ld[path] = _cls
+    if not hasattr(_cls, "_path"):
+        setattr(_cls, "_path", [])
+    setattr(_cls, "_path", getattr(_cls, "_path").append(path))
+    return _cls
+
+
+# Metrics
+@rdf(path="metric.algorithm.@schema")
+class MetricAlgorithmSchemaModel(EmbeddedOntologyModel):
+    type: str = Field(alias="@type", default=f"{ontology_uri}/MetricAlgorithm")
+    label: str = Field(alias="rdfs:label", default=...)
+    description: str = Field(alias="rdfs:description", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True
+
+
+@rdf(path="metric.@schema")
+class MetricImplementationModel(EmbeddedOntologyModel):
+    type: str = Field(alias="@type", default=f"{ontology_uri}/MetricImplementation")
+    label: str = Field(alias="rdfs:label", default=...)
+    description: str = Field(alias="rdfs:description", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
+    implements: str = Field(alias=f"{ontology_uri}/implements", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True
+
+
+# Datasets
+@rdf(path="metric.@schema")
+class DatasetSchemaModel(EmbeddedOntologyModel):
+    type: str = Field(alias="@type", default=f"{ontology_uri}/Dataset")
+    label: str = Field(alias="rdfs:label", default=...)
+    description: str = Field(alias="rdfs:description", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
+    author: str = Field(alias=f"{ontology_uri}/author", default=...)
+    has_characteristic: str = Field(alias=f"{ontology_uri}/hasCharacteristic")
+    has_feature: str = Field(alias=f"{ontology_uri}/hasFeature", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True
+
+
+class CharacteristicSchemaModel(EmbeddedOntologyModel):
+    """
+    Model for a class of characteristics
+    """
+    type: str = Field(alias="@type", default=f"{ontology_uri}/Characteristic")
+    label: str = Field(alias="rdfs:label", default=...)
+    description: str = Field(alias="rdfs:description", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True
+
+
+class CharacteristicModel(EmbeddedOntologyModel):
+    """
+    Model for an arbitrary characteristic
+    """
+    type: str = Field(alias="@type", default=f"{ontology_uri}/Characteristic")
+    label: str = Field(alias="rdfs:label", default=...)
+    has_data: str = Field(alias=f"{ontology_uri}/hasData")
+    data_type: str = Field(alias=f"{ontology_uri}/dataType", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True
+
+
+class FeatureModel(EmbeddedOntologyModel):
+    """
+    Model for feature column in a dataset.
+    """
+    type: str = Field(alias="@type", default=f"{ontology_uri}/Feature")
+    label: str = Field(alias="rdfs:label", default=...)
+    unit: str = Field(alias=f"{ontology_uri}/unit")
+    unit_type: str = Field(alias=f"{ontology_uri}/unitType")
+    data_type: str = Field(alias=f"{ontology_uri}/dataType", default=...)
+    measurement: str = Field(alias=f"{ontology_uri}/measurement", default=...)
+
+    class Config:
+        extra = Extra.allow
+        allow_population_by_field_name = True

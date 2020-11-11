@@ -1,6 +1,7 @@
 import os
 import threading
 from abc import ABCMeta, abstractmethod
+from collections import deque
 from json import dumps
 from typing import List
 
@@ -8,6 +9,7 @@ import rdflib
 from pydantic import HttpUrl, Extra, BaseModel
 from pypads import logger
 from pypads.app.backends.mlflow import MLFlowBackend, MLFlowBackendFactory
+from pypads.app.injections.tracked_object import ParameterTO
 from pypads.app.misc.mixins import CallableMixin
 from pypads.model.metadata import ModelObject
 from pypads.model.models import ResultType
@@ -16,7 +18,8 @@ from pypads.utils.util import dict_merge, persistent_hash
 from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
-from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel
+from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel, \
+    mapping_json_ld
 
 register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
@@ -159,20 +162,56 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         if entry.context is not None:
             entry.context = self._convert_context(entry.context)
 
-        entry, json_ld = self._prepare_insertion(entry, json_ld)
-
+        entry, json_ld, found_models = self._prepare_insertion(entry, json_ld, graph)
         out = self._convert(entry, graph)
-        self._add_json_ld(entry, json_ld, graph)
         return out
 
-    def _prepare_insertion(self, entry, json_ld):
+    @staticmethod
+    def _check_json_ld_model(json_ld_array, graph, check_for=None):
+        """
+        Looks at the _path attribute to find a related model to check for validity.
+        :param json_ld_array:
+        :return: Found models
+        """
+        models = {}
+        filtered_json_lds = []
+        not_found = set(check_for)
+        for entry in json_ld_array:  #
+            if store_hash(graph.identifier, str(entry)):
+                if "_path" in entry:
+                    path = entry["_path"]
+                    paths = []
+                    if check_for is not None:
+                        for clz in check_for:
+                            mapped_paths = getattr(clz, "_path", __default=None)
+                            if mapped_paths is not None:
+                                paths.extend(mapped_paths)
+                    if len(paths) == 0 or path in paths:
+                        model_cls = mapping_json_ld[path]
+                        if model_cls not in models:
+                            models[model_cls] = []
+                        models[model_cls].append(mapping_json_ld[path](**entry))
+                        not_found.remove(model_cls)
+                else:
+                    filtered_json_lds.append(entry)
+        return filtered_json_lds, models, not_found
+
+    def _prepare_insertion(self, entry, json_ld, graph):
         """
         Function to react to missing schema information and add missing values.
         :param entry:
         :param json_ld:
         :return:
         """
-        return entry, json_ld
+        # Validate unknown json_lds
+        json_ld, models, _ = self._check_json_ld_model(json_ld, graph)
+
+        # Re-append validated json_lds
+        json_ld = self._re_append_models(json_ld, models)
+
+        # Store json_lds
+        self._add_json_ld(entry, json_ld, graph)
+        return entry, json_ld, models
 
     @abstractmethod
     def _convert(self, obj, graph):
@@ -209,8 +248,13 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
                     val = data_path(data, *entry.split("."))
                     if val is not None:
                         if isinstance(val, dict):
+                            # Add the data path to the dict element this is used for later mapping to model objects
+                            val["_path"] = entry
                             json_ld.append(val)
                         elif isinstance(val, list):
+                            # Add the data path to the dict element this is used for later mapping to model objects
+                            for v in val:
+                                v["_path"] = entry
                             json_ld.extend(val)
                         else:
                             logger.warning(
@@ -271,6 +315,16 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
                                                                                           "category") else False or obj.storage_type == self.storage_type if self.storage_type is not None and hasattr(
                 obj, "storage_type") else False
 
+    @staticmethod
+    def _re_append_models(json_ld, models):
+        for v in models.values():
+            if isinstance(v, list):
+                for obj in v:
+                    json_ld.append(obj.dict(by_alias=True))
+            else:
+                json_ld.append(v.dict(by_alias=True))
+        return json_ld
+
 
 class IgnoreConversion(ObjectConverter):
     """
@@ -296,39 +350,55 @@ class GenericConverter(ObjectConverter):
         return True
 
 
+rdf_converters = deque([IgnoreConversion(storage_type=ResultType.logger_call), GenericConverter()])
+
+
+def converter(_cls=None):
+    rdf_converters.append(_cls())
+    return _cls
+
+
+@converter
 class ParameterConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
-    def _prepare_insertion(self, entry, json_ld):
+    def _prepare_insertion(self, entry: ParameterTO, json_ld, graph):
+        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
 
-        if json_ld is None:
-            # No schema definition was defined by the mapping file for parameter TODO trying to extract a Schema
-            pass
+        onto_entry = ParameterTOOnto(**entry.dict(by_alias=True))
 
-        return entry, json_ld
+        # TODO check if ontology doesn't contain what we reference here or we reference nothing?
+        # TODO build new json_ld entries
+
+        if (onto_entry.is_a, None, None) not in graph:
+            logger.warning(
+                f"Class {entry.is_a} of parameter was not found in ontology. Extracting a new ontology class for it...")
+
+        return entry, self._re_append_models(json_ld, models), models
 
     def _convert(self, entry, graph):
-        # TODO add basic parameter t-box. This should be done by parsing additional data
+
         def parse():
             graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
         threading.Thread(target=parse).start()
 
 
+@converter
 class MetricConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.metric, *args, **kwargs)
 
-    def _prepare_insertion(self, entry, json_ld):
-
+    def _prepare_insertion(self, entry, json_ld, graph):
+        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
         if json_ld is None:
             # No schema definition was defined by the mapping file for metric TODO trying to extract a Schema
             pass
 
-        return entry, json_ld
+        return entry, json_ld, models
 
     def _convert(self, entry, graph):
         # TODO add basic metric t-box. This should be done by parsing additional data
@@ -338,6 +408,7 @@ class MetricConverter(ObjectConverter):
         threading.Thread(target=parse).start()
 
 
+@converter
 class TagConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):
@@ -351,6 +422,7 @@ class TagConverter(ObjectConverter):
         threading.Thread(target=parse).start()
 
 
+@converter
 class ArtifactConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):

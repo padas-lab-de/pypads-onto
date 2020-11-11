@@ -1,9 +1,10 @@
-from typing import List
+from typing import Deque
 
 import rdflib
 from pypads.app.api import IApi, cmd
 
 from pypads_onto.arguments import ontology_uri
+from pypads_onto.injections.converter import rdf_converters
 
 
 class OntoPadsApi(IApi):
@@ -24,13 +25,11 @@ class OntoPadsApi(IApi):
         :param graph_id:
         :return:
         """
-        from pypads_onto.injections.converter import ObjectConverter, GenericConverter
+        from pypads_onto.injections.converter import ObjectConverter
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
-        converters_: List[ObjectConverter] = self.pypads.rdf_converters or [] if hasattr(self.pypads,
-                                                                                         "rdf_converters") else []
+        converters_: Deque[ObjectConverter] = rdf_converters
         converters_ = converters_.copy()
-        converters_.append(GenericConverter())
 
         for c in converters_:
             if c.is_applicable(obj):
