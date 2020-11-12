@@ -17,6 +17,8 @@ from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
 from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel
+from pypads_onto.variables import SPARQL_QUERY_ENDPOINT, SPARQL_UPDATE_ENDPOINT, SPARQL_AUTH_NAME, SPARQL_AUTH_PASSWORD, \
+    SPARQL_GRAPH
 
 register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
@@ -48,12 +50,12 @@ class OntologyMLFlowBackendFactory:
 
             def log(self, obj):
                 from rdflib.plugins.stores import sparqlstore
-                store = sparqlstore.SPARQLUpdateStore(os.environ["SPARQL_QUERY_ENDPOINT"],
-                                                      os.environ["SPARQL_UPDATE_ENDPOINT"],
-                                                      auth=(os.environ["SPARQL_AUTH_NAME"],
-                                                            os.environ["SPARQL_AUTH_PASSWORD"]))
-                graph = rdflib.Graph(store, identifier=rdflib.URIRef(os.environ["SPARQL_GRAPH"]))
-                graph.open((os.environ["SPARQL_QUERY_ENDPOINT"], os.environ["SPARQL_UPDATE_ENDPOINT"]))
+                store = sparqlstore.SPARQLUpdateStore(os.environ[SPARQL_QUERY_ENDPOINT],
+                                                      os.environ[SPARQL_UPDATE_ENDPOINT],
+                                                      auth=(os.environ[SPARQL_AUTH_NAME],
+                                                            os.environ[SPARQL_AUTH_PASSWORD]))
+                graph = rdflib.Graph(store, identifier=rdflib.URIRef(os.environ[SPARQL_GRAPH]))
+                graph.open((os.environ[SPARQL_QUERY_ENDPOINT], os.environ[SPARQL_UPDATE_ENDPOINT]))
 
                 """
                 TODO check type and generate missing data.
