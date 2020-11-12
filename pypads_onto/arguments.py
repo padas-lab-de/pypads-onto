@@ -5,6 +5,8 @@ import configparser
 import os
 from pypads import logger
 from pypads.arguments import PYPADS_FOLDER
+from pypads_onto.variables import SPARQL_AUTH_NAME, SPARQL_AUTH_PASSWORD, SPARQL_QUERY_ENDPOINT, SPARQL_UPDATE_ENDPOINT, \
+    SPARQL_GRAPH, SPARQL_PYPADS_ONTO
 
 
 def parse_configfile(path, parsed_args):
@@ -14,14 +16,14 @@ def parse_configfile(path, parsed_args):
     config = configparser.ConfigParser()
     config.read(path)
 
-    SPARQL = config['SPARQL']
+    SPARQL = config[SPARQL_PYPADS_ONTO] if SPARQL_PYPADS_ONTO in config else {}
 
     # Sparql related env variables
-    pypads_envs = {"SPARQL_GRAPH": parsed_args.OntologyUri,
-                   "SPARQL_QUERY_ENDPOINT": parsed_args.SPARQL_QUERY_ENDPOINT,
-                   "SPARQL_UPDATE_ENDPOINT": parsed_args.SPARQL_UPDATE_ENDPOINT,
-                   "SPARQL_AUTH_NAME": parsed_args.SPARQL_AUTH_NAME,
-                   "SPARQL_AUTH_PASSWORD": parsed_args.SPARQL_AUTH_PASSWORD}
+    pypads_envs = {SPARQL_GRAPH: parsed_args.OntologyUri,
+                   SPARQL_QUERY_ENDPOINT: parsed_args.SPARQL_QUERY_ENDPOINT,
+                   SPARQL_UPDATE_ENDPOINT: parsed_args.SPARQL_UPDATE_ENDPOINT,
+                   SPARQL_AUTH_NAME: parsed_args.SPARQL_AUTH_NAME,
+                   SPARQL_AUTH_PASSWORD: parsed_args.SPARQL_AUTH_PASSWORD}
 
     # Set the env variables
     for k, v in pypads_envs.items():
