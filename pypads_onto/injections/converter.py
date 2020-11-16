@@ -9,7 +9,7 @@ import rdflib
 from pydantic import HttpUrl, Extra, BaseModel
 from pypads import logger
 from pypads.app.backends.mlflow import MLFlowBackend, MLFlowBackendFactory
-from pypads.app.injections.tracked_object import ParameterTO
+from pypads.app.injections.tracked_object import Parameter
 from pypads.app.misc.mixins import CallableMixin
 from pypads.model.metadata import ModelObject
 from pypads.model.models import ResultType
@@ -176,6 +176,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         models = {}
         filtered_json_lds = []
         not_found = set(check_for)
+
         for entry in json_ld_array:  #
             if store_hash(graph.identifier, str(entry)):
                 if "_path" in entry:
@@ -356,34 +357,6 @@ rdf_converters = deque([IgnoreConversion(storage_type=ResultType.logger_call), G
 def converter(_cls=None):
     rdf_converters.append(_cls())
     return _cls
-
-
-@converter
-class ParameterConverter(ObjectConverter):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
-
-    def _prepare_insertion(self, entry: ParameterTO, json_ld, graph):
-        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
-
-        onto_entry = ParameterTOOnto(**entry.dict(by_alias=True))
-
-        # TODO check if ontology doesn't contain what we reference here or we reference nothing?
-        # TODO build new json_ld entries
-
-        if (onto_entry.is_a, None, None) not in graph:
-            logger.warning(
-                f"Class {entry.is_a} of parameter was not found in ontology. Extracting a new ontology class for it...")
-
-        return entry, self._re_append_models(json_ld, models), models
-
-    def _convert(self, entry, graph):
-
-        def parse():
-            graph.parse(data=entry.json(by_alias=True), format="json-ld")
-
-        threading.Thread(target=parse).start()
 
 
 @converter

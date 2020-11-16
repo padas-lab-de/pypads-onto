@@ -66,7 +66,6 @@ class AlgorithmParameterSchemaModel(OntologyModel):
 
 @converter
 class ParameterConverter(ObjectConverter):
-
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
