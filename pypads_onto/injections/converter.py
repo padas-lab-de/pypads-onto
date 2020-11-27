@@ -4,12 +4,13 @@ from abc import ABCMeta, abstractmethod
 from collections import deque
 from json import dumps
 from typing import List
+from uuid import UUID
 
 import rdflib
 from pydantic import HttpUrl, Extra, BaseModel
 from pypads import logger
 from pypads.app.backends.mlflow import MLFlowBackend, MLFlowBackendFactory
-from pypads.app.injections.tracked_object import ParameterTO
+from pypads.app.injections.base_logger import env_cache
 from pypads.app.misc.mixins import CallableMixin
 from pypads.model.metadata import ModelObject
 from pypads.model.models import ResultType
@@ -22,6 +23,38 @@ from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyMod
     mapping_json_ld
 
 register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
+
+_data_not_found = object()  # Object representing a data not found exception
+current_logging_env = {}  # Object representing currently available logging env. This is held in this manner to allow
+
+
+# noinspection PyMethodMayBeStatic
+def _append_model(models, obj):
+    if obj.__class__ not in models:
+        models[obj.__class__] = []
+    models[obj.__class__].append(obj)
+    return models
+
+
+# noinspection PyMethodMayBeStatic
+def _pop_model_by_data_path(models, cls, *path, default=None, warning=None):
+    data = _data_not_found
+    model = None
+    if cls in models:
+        for m in models[cls]:
+            data = data_path(m, *path, default=_data_not_found)
+            if data is not _data_not_found:
+                model = model
+                break
+    if model is None:
+        if warning is not None:
+            logger.warning(warning)
+        return default
+    models[cls].remove(model)
+    return model
+
+
+# for pydantic validators accessing the logging environment. TODO parallel processing
 
 
 class OntologyMLFlowBackendFactory:
@@ -166,13 +199,32 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         out = self._convert(entry, graph)
         return out
 
-    @staticmethod
-    def _check_json_ld_model(json_ld_array, graph, check_for=None):
+    def _get_logging_env(self, obj):
+        """
+        Function to extract the context information available for a given object or it's parents from the cache.
+        :param obj: TrackedObject, Parameter, LoggerOutput or similar.
+        :return:
+        """
+        from pypads.app.pypads import get_current_pads
+        pads = get_current_pads()
+
+        if pads.cache.run_exists(env_cache(obj)):
+            return pads.cache.run_get(env_cache(obj))
+
+        while hasattr(obj, "parent"):
+            obj = getattr(obj, "parent")
+            if pads.cache.run_exists(env_cache(obj)):
+                return pads.cache.run_get(env_cache(obj))
+
+        raise AttributeError(f"No environment saved in cache for object {obj}.")
+
+    def _check_json_ld_model(self, json_ld_array, graph, check_for=None):
         """
         Looks at the _path attribute to find a related model to check for validity.
         :param json_ld_array:
         :return: Found models
         """
+
         models = {}
         filtered_json_lds = []
         not_found = set(check_for)
@@ -203,6 +255,9 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         :param json_ld:
         :return:
         """
+        global current_logging_env
+        current_logging_env = self._get_logging_env(entry)
+
         # Validate unknown json_lds
         json_ld, models, _ = self._check_json_ld_model(json_ld, graph)
 
@@ -359,56 +414,6 @@ def converter(_cls=None):
 
 
 @converter
-class ParameterConverter(ObjectConverter):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
-
-    def _prepare_insertion(self, entry: ParameterTO, json_ld, graph):
-        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
-
-        onto_entry = ParameterTOOnto(**entry.dict(by_alias=True))
-
-        # TODO check if ontology doesn't contain what we reference here or we reference nothing?
-        # TODO build new json_ld entries
-
-        if (onto_entry.is_a, None, None) not in graph:
-            logger.warning(
-                f"Class {entry.is_a} of parameter was not found in ontology. Extracting a new ontology class for it...")
-
-        return entry, self._re_append_models(json_ld, models), models
-
-    def _convert(self, entry, graph):
-
-        def parse():
-            graph.parse(data=entry.json(by_alias=True), format="json-ld")
-
-        threading.Thread(target=parse).start()
-
-
-@converter
-class MetricConverter(ObjectConverter):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(storage_type=ResultType.metric, *args, **kwargs)
-
-    def _prepare_insertion(self, entry, json_ld, graph):
-        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
-        if json_ld is None:
-            # No schema definition was defined by the mapping file for metric TODO trying to extract a Schema
-            pass
-
-        return entry, json_ld, models
-
-    def _convert(self, entry, graph):
-        # TODO add basic metric t-box. This should be done by parsing additional data
-        def parse():
-            graph.parse(data=entry.json(by_alias=True), format="json-ld")
-
-        threading.Thread(target=parse).start()
-
-
-@converter
 class TagConverter(ObjectConverter):
 
     def __init__(self, *args, **kwargs):
@@ -434,3 +439,6 @@ class ArtifactConverter(ObjectConverter):
             graph.parse(data=entry.json(by_alias=True), format="json-ld")
 
         threading.Thread(target=parse).start()
+
+
+dummy_uuid = UUID('00000000-0000-0000-0000-000000000000')

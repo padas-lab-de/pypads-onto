@@ -133,12 +133,15 @@ class EmbeddedOntologyModel(IdBasedOntologyModel):
 mapping_json_ld = {}
 
 
-def rdf(_cls=None, *, path):
-    mapping_json_ld[path] = _cls
-    if not hasattr(_cls, "_path"):
-        setattr(_cls, "_path", [])
-    setattr(_cls, "_path", getattr(_cls, "_path").append(path))
-    return _cls
+def rdf(path):
+    def class_wrapper(_cls):
+        mapping_json_ld[path] = _cls
+        if not hasattr(_cls, "_path"):
+            setattr(_cls, "_path", [])
+        setattr(_cls, "_path", getattr(_cls, "_path").append(path))
+        return _cls
+
+    return class_wrapper
 
 
 # Metrics

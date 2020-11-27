@@ -1,5 +1,4 @@
 import glob
-import os
 
 from pypads.app import base
 # Overwrite the default BackendFactory of PyPads to produce Ontology support
@@ -7,23 +6,17 @@ from pypads.app.backends import mlflow
 from pypads.bindings import events
 from pypads.bindings import hooks
 from pypads.importext import mappings
-from pypads.model.models import ResultType
-from pypads.utils.util import dict_merge
 
 from pypads_onto.app.actuators import OntoPadsActuators
 from pypads_onto.app.api import OntoPadsApi
 from pypads_onto.app.decorators import OntoPadsDecorators
 from pypads_onto.app.results import OntoPadsResults
 from pypads_onto.app.validators import OntoPadsValidators
-from pypads_onto.arguments import ontology_uri
 from pypads_onto.bindings.anchors import init_anchors
 from pypads_onto.bindings.event_types import init_event_types
 from pypads_onto.bindings.events import DEFAULT_ONTO_LOGGING_FNS
 from pypads_onto.bindings.hooks import DEFAULT_ONTO_HOOK_MAPPING
-from pypads_onto.injections.converter import OntologyMLFlowBackendFactory
-from pypads_onto.injections.converter import IgnoreConversion, \
-    MetricConverter, TagConverter, ArtifactConverter
-from pypads_onto.model.parameters import ParameterConverter
+from pypads_onto.injections.converter import *
 
 mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
 
