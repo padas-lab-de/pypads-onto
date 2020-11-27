@@ -19,6 +19,9 @@ from pypads.utils.util import dict_merge, persistent_hash
 from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
+from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel
+from pypads_onto.variables import SPARQL_QUERY_ENDPOINT, SPARQL_UPDATE_ENDPOINT, SPARQL_AUTH_NAME, SPARQL_AUTH_PASSWORD, \
+    SPARQL_GRAPH
 from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel, \
     mapping_json_ld
 
@@ -84,12 +87,12 @@ class OntologyMLFlowBackendFactory:
 
             def log(self, obj):
                 from rdflib.plugins.stores import sparqlstore
-                store = sparqlstore.SPARQLUpdateStore(self.pypads.config["sparql-query-endpoint"],
-                                                      self.pypads.config["sparql-update-endpoint"],
-                                                      auth=(self.pypads.config["sparql-auth-name"],
-                                                            self.pypads.config["sparql-auth-password"]))
-                graph = rdflib.Graph(store, identifier=rdflib.URIRef(self.pypads.config["sparql-graph"]))
-                graph.open((self.pypads.config["sparql-query-endpoint"], self.pypads.config["sparql-update-endpoint"]))
+                store = sparqlstore.SPARQLUpdateStore(os.environ[SPARQL_QUERY_ENDPOINT],
+                                                      os.environ[SPARQL_UPDATE_ENDPOINT],
+                                                      auth=(os.environ[SPARQL_AUTH_NAME],
+                                                            os.environ[SPARQL_AUTH_PASSWORD]))
+                graph = rdflib.Graph(store, identifier=rdflib.URIRef(os.environ[SPARQL_GRAPH]))
+                graph.open((os.environ[SPARQL_QUERY_ENDPOINT], os.environ[SPARQL_UPDATE_ENDPOINT]))
 
                 """
                 TODO check type and generate missing data.
@@ -177,10 +180,10 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
             graph = rdflib.Graph(identifier=graph_id)
 
         if isinstance(obj, ModelObject):
-            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'})['additional_data']
+            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'}).get('additional_data',None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, BaseModel):
-            data_dict = obj.dict(by_alias=True, include={'additional_data'})['additional_data']
+            data_dict = obj.dict(by_alias=True, include={'additional_data'}).get('additional_data',None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, dict):
             data_dict = obj['additional_data'] if 'additional_data' in obj else {}

@@ -17,7 +17,7 @@ class CommonSklearnTest(BaseSklearnTest):
         # --------------------------- setup of the tracking ---------------------------
         # Activate tracking of pypads
         from pypads.app.base import PyPads
-        tracker = PyPads(uri="http://mlflow.padre-lab.eu")
+        tracker = PyPads()
         tracker.activate_tracking()
         tracker.start_track()
 

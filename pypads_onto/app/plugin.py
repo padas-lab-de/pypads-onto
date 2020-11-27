@@ -18,8 +18,6 @@ from pypads_onto.bindings.events import DEFAULT_ONTO_LOGGING_FNS
 from pypads_onto.bindings.hooks import DEFAULT_ONTO_HOOK_MAPPING
 from pypads_onto.injections.converter import *
 
-mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
-
 # Overwrite the reference objects for additional Ontology support
 # original_ref = models.get_reference_class
 #
@@ -47,11 +45,7 @@ DEFAULT_ONTO_SETUP_FNS = {}
 # Pypads mapping files shouldn't interact directly with the logging functions,
 # but define events on which different logging functions can listen.
 # This config defines such a listening structure.
-DEFAULT_ONTO_CONFIG = {"sparql-query-endpoint": "http://rdf.padre-lab.eu/pypads/query",
-                       "sparql-update-endpoint": "http://rdf.padre-lab.eu/pypads/update",
-                       "sparql-auth-name": "admin",
-                       "sparql-auth-password": "7gaUOSf0jNWlxre",
-                       "sparql-graph": ontology_uri}
+DEFAULT_ONTO_CONFIG = {}
 
 
 def configure_plugin(pypads, *args, converters=None, **kwargs):
@@ -60,6 +54,7 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
     plugin. Multiple executions should be possible.
     :return:
     """
+    mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
     if converters is None:
         converters = []
     actuators = OntoPadsActuators()
