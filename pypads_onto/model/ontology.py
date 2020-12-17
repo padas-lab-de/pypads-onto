@@ -114,7 +114,7 @@ class IdBasedOntologyModel(OntologyModel, BaseIdModel):
             else:
                 raise ValueError("Value for is_a is not given and can't be derived")
         if values['uri'] is None:
-            values['uri'] = f"{values['is_a']}#{values['uid']}"
+            values['uri'] = f"{values['is_a']}/{values['uid']}"
         return values
 
     class Config:
@@ -147,10 +147,10 @@ def rdf(path):
 # Metrics
 @rdf(path="metric.algorithm.@schema")
 class MetricAlgorithmSchemaModel(EmbeddedOntologyModel):
-    type: str = Field(alias="@type", default=f"{ontology_uri}/MetricAlgorithm")
+    type: str = Field(alias="@type", default=f"{ontology_uri}MetricAlgorithm")
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
-    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}documentation", default=...)
 
     class Config:
         extra = Extra.allow
@@ -159,11 +159,11 @@ class MetricAlgorithmSchemaModel(EmbeddedOntologyModel):
 
 @rdf(path="metric.@schema")
 class MetricImplementationModel(EmbeddedOntologyModel):
-    type: str = Field(alias="@type", default=f"{ontology_uri}/MetricImplementation")
+    type: str = Field(alias="@type", default=f"{ontology_uri}MetricImplementation")
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
-    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
-    implements: str = Field(alias=f"{ontology_uri}/implements", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}documentation", default=...)
+    implements: str = Field(alias=f"{ontology_uri}implements", default=...)
 
     class Config:
         extra = Extra.allow
@@ -171,15 +171,15 @@ class MetricImplementationModel(EmbeddedOntologyModel):
 
 
 # Datasets
-@rdf(path="metric.@schema")
+@rdf(path="dataset.@schema")
 class DatasetSchemaModel(EmbeddedOntologyModel):
-    type: str = Field(alias="@type", default=f"{ontology_uri}/Dataset")
+    type: str = Field(alias="@type", default=f"{ontology_uri}Dataset")
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
-    documentation: str = Field(alias=f"{ontology_uri}/documentation", default=...)
-    author: str = Field(alias=f"{ontology_uri}/author", default=...)
-    has_characteristic: str = Field(alias=f"{ontology_uri}/hasCharacteristic")
-    has_feature: str = Field(alias=f"{ontology_uri}/hasFeature", default=...)
+    documentation: str = Field(alias=f"{ontology_uri}documentation", default=...)
+    author: str = Field(alias=f"{ontology_uri}author", default=...)
+    has_characteristic: str = Field(alias=f"{ontology_uri}hasCharacteristic")
+    has_feature: str = Field(alias=f"{ontology_uri}hasFeature", default=...)
 
     class Config:
         extra = Extra.allow
@@ -190,7 +190,7 @@ class CharacteristicSchemaModel(EmbeddedOntologyModel):
     """
     Model for a class of characteristics
     """
-    type: str = Field(alias="@type", default=f"{ontology_uri}/Characteristic")
+    type: str = Field(alias="@type", default=f"{ontology_uri}Characteristic")
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
 
@@ -203,10 +203,10 @@ class CharacteristicModel(EmbeddedOntologyModel):
     """
     Model for an arbitrary characteristic
     """
-    type: str = Field(alias="@type", default=f"{ontology_uri}/Characteristic")
+    type: str = Field(alias="@type", default=f"{ontology_uri}Characteristic")
     label: str = Field(alias="rdfs:label", default=...)
-    has_data: str = Field(alias=f"{ontology_uri}/hasData")
-    data_type: str = Field(alias=f"{ontology_uri}/dataType", default=...)
+    has_data: str = Field(alias=f"{ontology_uri}hasData")
+    data_type: str = Field(alias=f"{ontology_uri}dataType", default=...)
 
     class Config:
         extra = Extra.allow
@@ -217,12 +217,12 @@ class FeatureModel(EmbeddedOntologyModel):
     """
     Model for feature column in a dataset.
     """
-    type: str = Field(alias="@type", default=f"{ontology_uri}/Feature")
+    type: str = Field(alias="@type", default=f"{ontology_uri}Feature")
     label: str = Field(alias="rdfs:label", default=...)
-    unit: str = Field(alias=f"{ontology_uri}/unit")
-    unit_type: str = Field(alias=f"{ontology_uri}/unitType")
-    data_type: str = Field(alias=f"{ontology_uri}/dataType", default=...)
-    measurement: str = Field(alias=f"{ontology_uri}/measurement", default=...)
+    unit: str = Field(alias=f"{ontology_uri}unit")
+    unit_type: str = Field(alias=f"{ontology_uri}unitType")
+    data_type: str = Field(alias=f"{ontology_uri}dataType", default=...)
+    measurement: str = Field(alias=f"{ontology_uri}measurement", default=...)
 
     class Config:
         extra = Extra.allow

@@ -19,16 +19,18 @@ from pypads.utils.util import dict_merge, persistent_hash
 from rdflib.plugin import register, Parser
 
 from pypads_onto.arguments import ontology_uri
-from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel
-from pypads_onto.variables import SPARQL_QUERY_ENDPOINT, SPARQL_UPDATE_ENDPOINT, SPARQL_AUTH_NAME, SPARQL_AUTH_PASSWORD, \
-    SPARQL_GRAPH
 from pypads_onto.model.ontology import IdBasedOntologyModel, EmbeddedOntologyModel, \
     mapping_json_ld
+from pypads_onto.variables import SPARQL_QUERY_ENDPOINT, SPARQL_UPDATE_ENDPOINT, SPARQL_AUTH_NAME, SPARQL_AUTH_PASSWORD, \
+    SPARQL_GRAPH
 
 register('json-ld', Parser, 'rdflib_jsonld.parser', 'JsonLDParser')
 
 _data_not_found = object()  # Object representing a data not found exception
 current_logging_env = {}  # Object representing currently available logging env. This is held in this manner to allow
+
+
+# for getting the last active logging env when none was available.
 
 
 # noinspection PyMethodMayBeStatic
@@ -97,12 +99,17 @@ class OntologyMLFlowBackendFactory:
                 """
                 TODO check type and generate missing data.
 
-                If we log a parameter look at additional data and generate entries by converting the estimator: model_parameter: etc. structure?
+                If we log a parameter look at additional data and generate entries by converting the estimator:
+                model_parameter: etc. structure?
                 If we log an estimator look at ...
                 If we log an metric look at ... 
 
                 """
-                self._backend.pypads.api.convert_to_rdf(obj, graph)
+                try:
+                    self._backend.pypads.api.convert_to_rdf(obj, graph)
+                except Exception as e:
+                    graph.close()
+                    logger.error(f"Failed to store RDF data for {obj} due to: {e}")
                 return self._backend.log(obj)
 
         # noinspection PyTypeChecker
@@ -180,10 +187,11 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
             graph = rdflib.Graph(identifier=graph_id)
 
         if isinstance(obj, ModelObject):
-            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'}).get('additional_data',None)
+            data_dict = obj.dict(by_alias=True, validate=False, include={'additional_data'}).get('additional_data',
+                                                                                                 None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, BaseModel):
-            data_dict = obj.dict(by_alias=True, include={'additional_data'}).get('additional_data',None)
+            data_dict = obj.dict(by_alias=True, include={'additional_data'}).get('additional_data', None)
             obj_dict = obj.dict(by_alias=True)
         elif isinstance(obj, dict):
             data_dict = obj['additional_data'] if 'additional_data' in obj else {}
@@ -198,7 +206,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         if entry.context is not None:
             entry.context = self._convert_context(entry.context)
 
-        entry, json_ld, found_models = self._prepare_insertion(entry, json_ld, graph)
+        entry, json_ld, found_models = self._prepare_insertion(obj, entry, json_ld, graph)
         out = self._convert(entry, graph)
         return out
 
@@ -219,7 +227,12 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
             if pads.cache.run_exists(env_cache(obj)):
                 return pads.cache.run_get(env_cache(obj))
 
-        raise AttributeError(f"No environment saved in cache for object {obj}.")
+        logger.warning(f"No environment saved in cache for object {obj}.")
+
+        if current_logging_env is not None:
+            return current_logging_env
+
+        raise AttributeError(f"No environment saved in cache for object {obj} and no previous logging env defined.")
 
     def _check_json_ld_model(self, json_ld_array, graph, check_for=None):
         """
@@ -230,7 +243,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
 
         models = {}
         filtered_json_lds = []
-        not_found = set(check_for)
+        not_found = set(check_for) if check_for is not None else set()
         for entry in json_ld_array:  #
             if store_hash(graph.identifier, str(entry)):
                 if "_path" in entry:
@@ -242,6 +255,9 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
                             if mapped_paths is not None:
                                 paths.extend(mapped_paths)
                     if len(paths) == 0 or path in paths:
+                        if path not in mapping_json_ld:
+                            logger.error(f"Couldn't find object representing {path}. Ignoring this entry.")
+                            continue
                         model_cls = mapping_json_ld[path]
                         if model_cls not in models:
                             models[model_cls] = []
@@ -251,7 +267,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
                     filtered_json_lds.append(entry)
         return filtered_json_lds, models, not_found
 
-    def _prepare_insertion(self, entry, json_ld, graph):
+    def _prepare_insertion(self, obj, entry, json_ld, graph):
         """
         Function to react to missing schema information and add missing values.
         :param entry:
@@ -259,7 +275,7 @@ class ObjectConverter(CallableMixin, metaclass=ABCMeta):
         :return:
         """
         global current_logging_env
-        current_logging_env = self._get_logging_env(entry)
+        current_logging_env = self._get_logging_env(obj)
 
         # Validate unknown json_lds
         json_ld, models, _ = self._check_json_ld_model(json_ld, graph)

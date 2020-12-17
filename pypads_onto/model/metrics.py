@@ -11,13 +11,13 @@ class MetricConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.metric, *args, **kwargs)
 
-    def _prepare_insertion(self, entry, json_ld, graph):
-        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
+    def _prepare_insertion(self, obj, entry, json_ld, graph):
+        obj, entry, json_ld, models = super()._prepare_insertion(obj, entry, json_ld, graph)
         if json_ld is None:
             # No schema definition was defined by the mapping file for metric TODO trying to extract a Schema
             pass
 
-        return entry, json_ld, models
+        return obj, entry, json_ld, models
 
     def _convert(self, entry, graph):
         # TODO add basic metric t-box. This should be done by parsing additional data

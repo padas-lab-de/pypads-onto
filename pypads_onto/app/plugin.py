@@ -56,12 +56,16 @@ def configure_plugin(pypads, *args, converters=None, **kwargs):
     """
     mlflow.MLFlowBackendFactory = OntologyMLFlowBackendFactory
     if converters is None:
-        converters = []
+        converters = rdf_converters
+    elif isinstance(converters, List):
+        converters = deque(converters)
     actuators = OntoPadsActuators()
     validators = OntoPadsValidators()
     decorators = OntoPadsDecorators()
     results = OntoPadsResults()
     api = OntoPadsApi()
+
+    setattr(pypads, "pypads_onto_converters", converters)
 
     mappings.default_mapping_file_paths.extend(
         glob.glob(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "bindings",

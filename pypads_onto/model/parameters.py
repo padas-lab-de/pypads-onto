@@ -39,7 +39,7 @@ class ParameterOntoModel(EmbeddedOntologyModel):
             "@id": f"{ontology_uri}value_type"
         }
     }
-    is_a: HttpUrl = f"{ontology_uri}/Parameters"
+    is_a: HttpUrl = f"{ontology_uri}Parameters"
     configures: Union['AlgorithmOntoModel', HttpUrl] = ...
     implements: Union['AlgorithmParameterOntoModel', HttpUrl] = ...
     optional: bool = ...
@@ -63,8 +63,8 @@ class AlgorithmOntoModel(OntologyModel):
     """
     A representation of the abstract / generic / conceptual representation of the mathematical concept of an algorithm.
     """
-    type: HttpUrl = Field(alias="@type", default=f"{ontology_uri}/Algorithm")
-    solves: Union[HttpUrl] = Field(alias=f"{ontology_uri}/solves",
+    type: HttpUrl = Field(alias="@type", default=f"{ontology_uri}Algorithm")
+    solves: Union[HttpUrl] = Field(alias=f"{ontology_uri}solves",
                                    default=...)  # A reference to a task to be solved. TODO add Task model
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
@@ -81,12 +81,12 @@ class AlgorithmParameterOntoModel(OntologyModel):
     """
     A representation of the abstract / generic / conceptual representation of the parameter for a mathematical concept.
     """
-    type: str = Field(alias="@type", default=f"{ontology_uri}/Parameters")
-    configures: str = Field(alias=f"{ontology_uri}/configures", default=...)
+    type: str = Field(alias="@type", default=f"{ontology_uri}Parameters")
+    configures: str = Field(alias=f"{ontology_uri}configures", default=...)
     label: str = Field(alias="rdfs:label", default=...)
     description: str = Field(alias="rdfs:description", default=...)
     # Reference to other AlgorithmParameterOntoModels. Some parameters might group others together into a single value.
-    includes: Optional[Union[HttpUrl, 'AlgorithmParameterOntoModel']] = Field(alias=f"{ontology_uri}/includes")
+    includes: Optional[Union[HttpUrl, 'AlgorithmParameterOntoModel']] = Field(alias=f"{ontology_uri}includes")
 
     class Config:
         extra = Extra.allow
@@ -99,8 +99,8 @@ class ParameterConverter(ObjectConverter):
     def __init__(self, *args, **kwargs):
         super().__init__(storage_type=ResultType.parameter, *args, **kwargs)
 
-    def _prepare_insertion(self, entry: Parameter, json_ld, graph):
-        entry, json_ld, models = super()._prepare_insertion(entry, json_ld, graph)
+    def _prepare_insertion(self, obj, entry: Parameter, json_ld, graph):
+        obj, entry, json_ld, models = super()._prepare_insertion(obj, entry, json_ld, graph)
 
         onto_entry = ParameterOntoModel(**entry.dict(by_alias=True))
 
@@ -112,8 +112,8 @@ class ParameterConverter(ObjectConverter):
             #  These will be called here but also in the preceding model extraction.
             #  This allows to check and fill missing values in user provided data.
             # noinspection PyTypeChecker
-            algorithm_model = AlgorithmOntoModel(uri=f"{ontology_uri}/Algorithm#Dummy",
-                                                 solves=f"{ontology_uri}/Task#Dummy", label="Unknown algorithm",
+            algorithm_model = AlgorithmOntoModel(uri=f"{ontology_uri}Algorithm#Dummy",
+                                                 solves=f"{ontology_uri}Task#Dummy", label="Unknown algorithm",
                                                  description="Algorithm was extracted.")
 
             models = _append_model(models, algorithm_model)
@@ -123,8 +123,8 @@ class ParameterConverter(ObjectConverter):
             logger.warning(
                 "Algorithm parameter model couldn't be found in mapping provided data. Trying to extract something...")
             # noinspection PyTypeChecker
-            algorithm_parameter_model = AlgorithmParameterOntoModel(uri=f"{ontology_uri}/AlgorithmParameter#Dummy",
-                                                                    configures=f"{ontology_uri}/AlgorithmParameter#Dummy",
+            algorithm_parameter_model = AlgorithmParameterOntoModel(uri=f"{ontology_uri}AlgorithmParameter#Dummy",
+                                                                    configures=f"{ontology_uri}AlgorithmParameter#Dummy",
                                                                     label="Unknown algorithm parameter",
                                                                     description="Algorithm parameter was extracted.",
                                                                     includes=None)
@@ -135,8 +135,8 @@ class ParameterConverter(ObjectConverter):
         if parameter_model is None:
             logger.warning("Parameter model couldn't be found in mapping provided data. Trying to extract something...")
             # noinspection PyTypeChecker
-            parameter_model = ParameterOntoModel(configures=f"{ontology_uri}/AlgorithmImplementation#Dummy",
-                                                 implements=f"{ontology_uri}/AlgorithmParameter#Dummy",
+            parameter_model = ParameterOntoModel(configures=f"{ontology_uri}AlgorithmImplementation#Dummy",
+                                                 implements=f"{ontology_uri}AlgorithmParameter#Dummy",
                                                  optional="Unknown",
                                                  path="Unknown", value_default="Unknown",
                                                  value_type="Unknown", label="Unknown",
@@ -147,7 +147,7 @@ class ParameterConverter(ObjectConverter):
             logger.warning(
                 f"Class {entry.is_a} of parameter was not found in ontology. Extracting a new ontology class for it...")
 
-        return entry, self._re_append_models(json_ld, models), models
+        return obj, entry, self._re_append_models(json_ld, models), models
 
     def _convert(self, entry, graph):
         def parse():

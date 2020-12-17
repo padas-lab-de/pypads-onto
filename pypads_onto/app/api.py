@@ -26,9 +26,10 @@ class OntoPadsApi(IApi):
         :return:
         """
         from pypads_onto.injections.converter import ObjectConverter
+        from pypads.app.pypads import get_current_pads
         if graph is None:
             graph = rdflib.Graph(identifier=graph_id)
-        converters_: Deque[ObjectConverter] = rdf_converters
+        converters_: Deque[ObjectConverter] = getattr(get_current_pads(), "pypads_onto_converters", rdf_converters)
         converters_ = converters_.copy()
 
         for c in converters_:
